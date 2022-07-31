@@ -7,7 +7,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/cuda)
 enable_language(CUDA)
 
 # set(CMAKE_CUDA_FLAGS "-lcublas")
-set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose)
+set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose reduction_tile32)
 
 foreach(EXE IN LISTS EXECUTABLES)
 	add_executable(${EXE})
