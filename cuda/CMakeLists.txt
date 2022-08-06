@@ -6,7 +6,6 @@ check_language(CUDA)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/cuda)
 enable_language(CUDA)
 
-# set(CMAKE_CUDA_FLAGS "-lcublas")
 set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose reduction_tile32)
 
 foreach(EXE IN LISTS EXECUTABLES)
@@ -21,10 +20,10 @@ foreach(EXE IN LISTS EXECUTABLES)
 	)
 endforeach()
 
-# target_compile_options(matrix_mul
-#     PUBLIC
-#     $<$<COMPILE_LANGUAGE:CUDA>: -lcublas>
-# )
+add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_local_memory_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+
+
 
 
 message(STATUS "---- CUDA CONFIG ----")
