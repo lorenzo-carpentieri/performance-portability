@@ -38,6 +38,25 @@ foreach(EXE IN LISTS EXECUTABLES)
 
 endforeach()
 
+add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_local_memory_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
+
+
+
+if(SYCL_BACKEND STREQUAL hipSYCL)
+		find_package(hipSYCL REQUIRED)
+		add_sycl_to_target(TARGET box_blur)
+endif()
+if(SYCL_BACKEND STREQUAL hipSYCL)
+		find_package(hipSYCL REQUIRED)
+		add_sycl_to_target(TARGET box_blur_local_memory)
+endif()
+if(SYCL_BACKEND STREQUAL hipSYCL)
+		find_package(hipSYCL REQUIRED)
+		add_sycl_to_target(TARGET sobel_filter)
+endif()
+
 option(SYCL_BACKEND "Enable selected SYCL backend" "")
 option(SYCL_DEVICE "Select target SYCL device" GPU)
 

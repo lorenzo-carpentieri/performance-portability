@@ -22,6 +22,8 @@ endforeach()
 
 add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_local_memory_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+
 
 
 
