@@ -44,13 +44,17 @@ __global__ void transposeCoalesced(float *odata, float *idata, int width, int he
 int main( int argc, char** argv)
 {
     
+    cudaEvent_t start, stop;
+    float time = 0;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
     // execution configuration parameters
     dim3 grid(SIZE_X/TILE_DIM, SIZE_Y/TILE_DIM); 
     dim3 threads(TILE_DIM,BLOCK_ROWS);
     
-    // CUDA events
-    cudaEvent_t start, stop;
+ 
     
     // size of memory required to store the matrix
     const int mem_size = sizeof(float) * SIZE_X*SIZE_Y;
@@ -83,16 +87,16 @@ int main( int argc, char** argv)
    
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
-    float kernelTime;
-    cudaEventElapsedTime(&kernelTime, start, stop);
+    cudaEventElapsedTime(&time, start, stop);
     cudaMemcpy(h_odata,d_odata, mem_size, cudaMemcpyDeviceToHost);
     
+    printf("%s, %f\n", "matrix_transpose_cuda", time);
+
     #ifdef DEBUG
     for(int i = 0; i < SIZE_X*SIZE_Y; i++)
         std::cout << h_odata[i] << ", "; 
     #endif
 
-    printf("Time (ms): %f\n", kernelTime);
     // cleanup
     free(h_idata); 
     free(h_odata);

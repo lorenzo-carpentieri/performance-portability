@@ -47,6 +47,10 @@ __global__ void gpu_square_matrix_mult(float *d_a, float *d_b, float *d_result, 
 }
 
 int main (int argc, char ** argv) {
+     cudaEvent_t start, stop;
+    float time = 0;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 
     size_t N;
 
@@ -92,17 +96,28 @@ int main (int argc, char ** argv) {
     cudaMemcpy(B_d, B_h, N * N * sizeof(float), cudaMemcpyHostToDevice);
 
     cudaMemset(C_d, 0, N * N * sizeof(float));
+    // Take start time
+    cudaEventRecord(start);
+    gpu_square_matrix_mult<<<grid, threads>>>(A_d, B_d,C_d,N);
 
-     gpu_square_matrix_mult<<<grid, threads>>>(A_d, B_d,C_d,N);
+    cudaEventRecord(stop);
+    // Wait stop event
+    cudaEventSynchronize(stop);
 
+    // Take time in ms
+    cudaEventElapsedTime(&time, start, stop);
     
+    printf("%s, %f\n", "matrix_mul_tiling_cuda", time);
     // Data from device to host
     cudaMemcpy(C_h, C_d, N * N * sizeof(float), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
-
+    
+    #ifdef DEBUG
     for(int i = 0; i < N*N; i++){
         std::cout << C_h[i] << ", ";
     }
+    #endif
+    
     // Free device memory
     cudaFree(A_d);     
     cudaFree(B_d);

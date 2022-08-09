@@ -37,6 +37,10 @@ void blur(unsigned char* input_image, unsigned char* output_image, int width, in
 }
 
 void filter (unsigned char* input_image, unsigned char* output_image, int width, int height) {
+     cudaEvent_t start, stop;
+    float time = 0;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 
     unsigned char* dev_input;
     unsigned char* dev_output;
@@ -45,13 +49,21 @@ void filter (unsigned char* input_image, unsigned char* output_image, int width,
 
     cudaMalloc( (void**) &dev_output, width*height*3*sizeof(unsigned char));
 
-    printf("width: %d, height: %d\n", width, height);
   
     dim3 blockDims(512,1,1);
     dim3 gridDims((unsigned int) ceil((double)(width*height/blockDims.x)), 1, 1 );
+    // Take start time
+    cudaEventRecord(start);
     blur<<<gridDims, blockDims>>>(dev_input, dev_output, width, height); 
 
-    printf("Kernel finish\n");
+    cudaEventRecord(stop);
+    // Wait stop event
+    cudaEventSynchronize(stop);
+
+    // Take time in ms
+    cudaEventElapsedTime(&time, start, stop);
+    
+    printf("%s, %f\n", "box_blur_cuda", time);
 
     cudaMemcpy(output_image, dev_output, width*height*3*sizeof(unsigned char), cudaMemcpyDeviceToHost );
 
@@ -74,7 +86,6 @@ int main(int argc, char** argv) {
     unsigned int width, height;
 
     // Load the data
-    printf("Load image\n");
     unsigned error = lodepng::decode(in_image, width, height, input_file);
     if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
     // Prepare the data

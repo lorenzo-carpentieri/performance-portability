@@ -71,6 +71,11 @@ __global__ void reduction(T* input, T* output)
 
 int main()
 {
+    cudaEvent_t start, stop;
+    float time = 0;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
     T* h_input = (T*)malloc(N * sizeof(T));
     T* h_output = (T*)malloc(sizeof(T));
 
@@ -90,20 +95,32 @@ int main()
     // Copying input data from host to device, executing kernel and copying result from device to host
 
     *h_output = 0;
-    for (int i = 0; i < n_iterations; ++i, *h_output = 0) {
-        cudaMemcpy(d_input, h_input, N * sizeof(T), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_output, h_output, sizeof(T), cudaMemcpyHostToDevice);
+    
+    cudaMemcpy(d_input, h_input, N * sizeof(T), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_output, h_output, sizeof(T), cudaMemcpyHostToDevice);
 
-        reduction << <N_BLOCKS, BLOCK_SIZE >> > (d_input, d_output);
-        cudaMemcpy(h_output, d_output, sizeof(T), cudaMemcpyDeviceToHost);
+    cudaEventRecord(start);
+    reduction << <N_BLOCKS, BLOCK_SIZE >> > (d_input, d_output);
+    
+    cudaEventRecord(stop);
+    // Wait stop event
+    cudaEventSynchronize(stop);
+    // Take time in ms
+    cudaEventElapsedTime(&time, start, stop);
+    printf("%s, %f\n", "reduction_tile32_cuda", time);
 
-        if (*h_output == N)
-            printf("Iteration %d: pass\n", i + 1);
-        else
-            printf("Iteration %d: fail, result: %f\n", i + 1, *h_output);
+    cudaMemcpy(h_output, d_output, sizeof(T), cudaMemcpyDeviceToHost);
 
-        cudaDeviceSynchronize();
-    }
+
+    #ifdef DEBUG
+    if (*h_output == N)
+        printf("pass\n");
+    else
+        printf("fail, result: %f\n", *h_output);
+    #endif
+
+    cudaDeviceSynchronize();
+    
 
 
     cudaFree(d_input);

@@ -65,7 +65,7 @@
 //         out[offset * 3+2] = sum_b / hits; 
 // }
 
-#define R              7
+#define R              5
 #define D              (R*2+1)
 #define S              (D*D)
 #define BLOCK_SIZE     512
@@ -125,6 +125,10 @@ __global__ void monodimensional_blur(const unsigned char *in_r, const unsigned c
 
 
 void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_b, unsigned char* output_image, int width, int height) {
+     cudaEvent_t start, stop;
+    float time = 0;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 
     unsigned char* dev_r;
     unsigned char* dev_g;
@@ -146,9 +150,18 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
    
     dim3 threadsPerBlock(BLOCK_SIZE);
     dim3 blocksPerGrid(height*width/BLOCK_SIZE) ;
-    
+    // Take start time
+    cudaEventRecord(start);
     monodimensional_blur<<<blocksPerGrid, threadsPerBlock>>>(dev_r, dev_g, dev_b, dev_output, width, height); 
     
+    cudaEventRecord(stop);
+    // Wait stop event
+    cudaEventSynchronize(stop);
+
+    // Take time in ms
+    cudaEventElapsedTime(&time, start, stop);
+    
+    printf("%s, %f\n", "box_blur_local_memory_cuda", time);
    
 
     cudaMemcpy(output_image, dev_output, width*height*3*sizeof(unsigned char), cudaMemcpyDeviceToHost );
@@ -176,7 +189,6 @@ int main(int argc, char** argv) {
     unsigned int width, height;
 
     // Load the data
-    printf("Load image\n");
     unsigned error = lodepng::decode(in_image, width, height, input_file);
     if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
     // Prepare the data
@@ -218,7 +230,6 @@ int main(int argc, char** argv) {
     std::vector<unsigned char> out_image;
     for(int i = 0; i < width*height*3; i++) {
         out_image.push_back(output_image[i]);
-        // printf("id: %d, output_image_val: %d\n", i, output_image[i]);
         if((i+1) % 3 == 0) {
             out_image.push_back(255);
         }

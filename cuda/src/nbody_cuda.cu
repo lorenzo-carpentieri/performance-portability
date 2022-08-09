@@ -201,17 +201,23 @@ int main(const int argc, const char** argv) {
 
     // Take time in ms
     cudaEventElapsedTime(&time, start, stop);
+    
+    printf("%s, %f\n", "nbody_cuda", time);
+
+
         
     // Device to host
     cudaMemcpy(new_pos, d_new_pos, bytes, cudaMemcpyDeviceToHost);
     cudaMemcpy(new_vel, d_new_vel, bytes, cudaMemcpyDeviceToHost);
         
+    #ifdef DEBUG
     // print results
     for(int i = 0; i < N; i++){
         printf("body: %d, new_pos_x: %.2f, new_pos_y: %.2f, new_pos_z: %.2f\n", i, new_pos[i].x, new_pos[i].y, new_pos[i].z);
         printf("body: %d, new_vel_x: %.2f, new_vel_y: %.2f, new_vel_z: %.2f\n", i, new_vel[i].x, new_vel[i].y, new_vel[i].z);
         printf("\n");
     }
+    #endif
 
 
     cudaFree(d_new_pos);
@@ -220,6 +226,5 @@ int main(const int argc, const char** argv) {
     cudaFree(d_old_vel);
 
 
-    printf("Time: %f\n", time);
 
 }

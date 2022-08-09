@@ -68,7 +68,11 @@ void sobel_filter(float3* in, float3* out, int* size, float* kernel) {
 }
 
 void filter (float3* input_image, float3* output_image, const int size) {
-
+    cudaEvent_t start, stop;
+    float time = 0;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    
     float3* dev_input;
     float3* dev_output;
     float *dev_kernel;
@@ -89,9 +93,17 @@ void filter (float3* input_image, float3* output_image, const int size) {
   
     dim3 blockDims(32,32);
     dim3 gridDims(size/32,size/32);
+    // Take start time
+    cudaEventRecord(start);
     sobel_filter<<<gridDims, blockDims>>>(dev_input, dev_output, dev_size, dev_kernel); 
-
-    printf("Kernel finish\n");
+    
+ 
+    cudaEventRecord(stop);
+   // Wait stop event
+    cudaEventSynchronize(stop);
+    // Take time in ms
+    cudaEventElapsedTime(&time, start, stop);
+    printf("%s, %f\n", "sobel_filter_cuda", time);
 
     cudaMemcpy(output_image, dev_output, size*size*sizeof(float3), cudaMemcpyDeviceToHost);
 
@@ -114,7 +126,6 @@ int main(int argc, char** argv) {
     unsigned int width, height;
 
     // Load the data
-    printf("Load image\n");
     unsigned error = lodepng::decode(in_image, width, height, input_file);
     if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
     // Prepare the data
