@@ -4,6 +4,7 @@
 #include <functional>
 #include <cmath>
 #include <sycl/sycl.hpp>
+#include "../include/time_ms.hpp"
 
 #define BLOCK_SIZE 512
 using namespace sycl;
@@ -62,15 +63,15 @@ class blur{
 
 void filter (unsigned char* input_image, unsigned char* output_image, int width, int height) {
 
-    queue Q {gpu_selector()};
+    queue Q {gpu_selector(), property::queue::enable_profiling()};
     {
         range<1> threadPerBlock{BLOCK_SIZE};
         range<1> threadInGrid{BLOCK_SIZE*BLOCK_SIZE};
         buffer<unsigned char, 1> in_buff {input_image, width*height*3};
         buffer<unsigned char, 1> out_buff {output_image, width*height*3};
       
-
-        Q.submit([&](handler &cgh){
+        event e;
+        e = Q.submit([&](handler &cgh){
             const accessor<unsigned char, 1> in {in_buff, cgh, read_only};
             accessor<unsigned char, 1> out {out_buff, cgh, read_write, no_init};
             
@@ -84,6 +85,8 @@ void filter (unsigned char* input_image, unsigned char* output_image, int width,
             ); //end parallel for
             
         }); // end queue
+
+        time_ms(e, "box_blur_sycl");
     }
 }
 
@@ -101,7 +104,6 @@ int main(int argc, char** argv) {
     unsigned int width, height;
 
     // Load the data
-    printf("Load image\n");
     unsigned error = lodepng::decode(in_image, width, height, input_file);
     if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
     // Prepare the data

@@ -1,6 +1,7 @@
 #include <sycl/sycl.hpp>
 #include <iostream>
 #include <stdio.h>
+#include "time_ms.hpp"
 
 #define N 30720
 #define BLOCK_SIZE 512
@@ -55,14 +56,14 @@ int main (){
     for (int i = 0; i < N; i++)
         input[i] = 1.0f;
 
-    queue Q{gpu_selector()};
+    queue Q{gpu_selector(), property::queue::enable_profiling()};
     {
         buffer<T, 1> in_buff{input, N};
         buffer<T, 1> out_buff{output, 1};
         range<1> grid{BLOCK_SIZE*N_BLOCKS};
         range<1> block{BLOCK_SIZE};
-
-        Q.submit([&](handler &cgh){
+        event e;
+        e = Q.submit([&](handler &cgh){
             accessor<T, 1> in_acc{in_buff,cgh, read_only};
             accessor<T, 1> out_acc{out_buff,cgh, read_write};
             
@@ -74,13 +75,15 @@ int main (){
                 local_data
             ));
         });
-
+        time_ms(e, "reduction_sycl");
     }
-        if(*output==N)
-            printf("Test PASS\n");
-        else 
-            printf("Test FAIL\n");
-        
+
+    #ifdef DEBUG
+    if(*output==N)
+        printf("Test PASS\n");
+    else 
+        printf("Test FAIL\n");
+    #endif
 
 
 }

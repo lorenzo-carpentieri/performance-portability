@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <sycl/sycl.hpp>
+#include "time_ms.hpp"
 // kernels transpose/copy a tile of TILE_DIM x TILE_DIM elements
 // using a TILE_DIM x BLOCK_ROWS thread block, so that each thread
 // transposes TILE_DIM/BLOCK_ROWS elements. TILE_DIM must be an
@@ -66,12 +67,6 @@ class transposeCoalesced{
 
 
 };
-// (float *odata, float *idata, int width, int DIM_X)
-// {
-    // initialize local memory
-    // TILE_DIM+1 to avoid bank conflicts 
-
-// }
 
 
 int main( int argc, char** argv)
@@ -80,7 +75,6 @@ int main( int argc, char** argv)
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
     // execution configuration parameters
     
-    // CUDA events
     event e;
     
     // size of memory required to store the matrix
@@ -93,7 +87,7 @@ int main( int argc, char** argv)
     for(int i = 0; i < (SIZE_X*SIZE_Y); ++i)
         in_matrix[i] = (float) i;
 
-    queue Q;
+    queue Q {gpu_selector(), property::queue::enable_profiling()};
 
     {
         range<2> grid {BLOCK_ROWS * (SIZE_X / TILE_DIM), TILE_DIM * (SIZE_X / TILE_DIM)}; 
@@ -116,11 +110,14 @@ int main( int argc, char** argv)
             );//end parallel for
         });
 
+        time_ms(e,"matrix_transpose_sycl");
+
     }
 
+    #ifdef DEBUG
     for(int i = 0; i < SIZE_X*SIZE_Y; i++)
         std::cout << out_matrix[i] << ", ";
-
+    #endif
 
     
     

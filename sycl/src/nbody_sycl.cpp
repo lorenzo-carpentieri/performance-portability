@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <sycl/sycl.hpp>
+#include "time_ms.hpp"
 
 #define N 30208
 #define BLOCK_SIZE 256
@@ -32,6 +33,7 @@ sycl::float3 bodyBodyInteraction(sycl::float4 bi, sycl::float4 bj, sycl::float3 
     
     return ai;
 }
+
 template<int TILE_SIZE>
 sycl::float3 tile_calculation(sycl::float4 myPosition, sycl::float3 accel, sycl::local_accessor<sycl::float4, 1> sh_position)
 {
@@ -131,9 +133,8 @@ int main(const int argc, const char** argv) {
         vel[i][3]= 0;
     }
   
-    sycl::queue Q;
+    sycl::queue Q {sycl::gpu_selector(), sycl::property::queue::enable_profiling()};
     
-    // prova(a, b, c);
     {
         // buffer
         sycl::buffer<sycl::float4,1> pos_buff {pos, N};
@@ -144,9 +145,9 @@ int main(const int argc, const char** argv) {
             
         sycl::range<1> block{BLOCK_SIZE};
         sycl::range<1> grid{N}; 
-        
+        sycl::event e;
     
-        Q.submit([&](sycl::handler &cgh) {
+        e = Q.submit([&](sycl::handler &cgh) {
             // accessor
             const sycl::accessor in_pos{pos_buff, cgh, sycl::read_only};
             const sycl::accessor in_vel{vel_buff, cgh, sycl::read_only};
@@ -162,24 +163,16 @@ int main(const int argc, const char** argv) {
                 sh_position
             ));
         });
+        time_ms(e, "nbody_sycl");
     }
-  
-     
-        // print results
-        for(int i = 0; i < N; i++){
-            printf("body: %d, new_pos_x: %.2f, new_pos_y: %.2f, new_pos_z: %.2f\n",  i, new_pos[i][0], new_pos[i][1], new_pos[i][2]);
-            printf("body: %d, new_vel_x: %.2f, new_vel_y: %.2f, new_vel_z: %.2f\n",  i, new_vel[i][0], new_vel[i][1], new_vel[i][2]);
-            printf("\n");
-        }
 
-    
-    
- 
-
-    
-
- 
-
-    
+    #ifdef DEBUG
+    // print results
+    for(int i = 0; i < N; i++){
+        printf("body: %d, new_pos_x: %.2f, new_pos_y: %.2f, new_pos_z: %.2f\n",  i, new_pos[i][0], new_pos[i][1], new_pos[i][2]);
+        printf("body: %d, new_vel_x: %.2f, new_vel_y: %.2f, new_vel_z: %.2f\n",  i, new_vel[i][0], new_vel[i][1], new_vel[i][2]);
+        printf("\n");
+    }
+    #endif    
 }
 

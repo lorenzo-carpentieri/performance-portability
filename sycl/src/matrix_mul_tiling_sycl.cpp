@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <sycl/sycl.hpp>
+#include "time_ms.hpp"
 
 #define N 4
 #define BLOCK_SIZE 2
@@ -76,8 +77,7 @@ int main( int argc, char** argv)
     
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
     // execution configuration parameters
-    
-    // CUDA events
+ 
     event e;
     
     // size of memory required to store the matrix
@@ -95,7 +95,7 @@ int main( int argc, char** argv)
         c_matrix[i] = 0.0;
     }
 
-    queue Q;
+    queue Q{gpu_selector(), property::queue::enable_profiling()};
 
     {
         range<2> grid {N, N}; 
@@ -124,7 +124,7 @@ int main( int argc, char** argv)
             )
             );//end parallel for
         });
-
+        time_ms(e, "matrix_mul_tiling_sycl");
     }
 
     for(int i = 0; i < N*N; i++)

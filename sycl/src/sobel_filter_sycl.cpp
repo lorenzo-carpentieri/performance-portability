@@ -111,7 +111,7 @@ void filter (sycl::float3* input_image, sycl::float3* output_image, int width, i
             
         }); // end queue
 
-        time_ms(e, "sobel_filter");
+        time_ms(e, "sobel_filter_sycl");
     }
 }
 
@@ -128,8 +128,6 @@ int main(int argc, char** argv) {
     std::vector<unsigned char> in_image;
     unsigned int width, height;
 
-    // Load the data
-    printf("Load image\n");
     unsigned error = lodepng::decode(in_image, width, height, input_file);
     if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
     // Prepare the data

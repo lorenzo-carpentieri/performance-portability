@@ -4,6 +4,8 @@
 #include <functional>
 #include <cmath>
 #include <sycl/sycl.hpp>
+#include "../include/time_ms.hpp"
+
 
 #define R              5
 #define D              (R*2+1)
@@ -105,7 +107,7 @@ class blur{
 
 void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_b, unsigned char* output_image, const int width, const int height) {
 
-    queue Q {gpu_selector()};
+    queue Q {gpu_selector(), property::queue::enable_profiling()};
     {
         range<1> threadPerBlock{BLOCK_SIZE};
         range<1> threadInGrid{BLOCK_SIZE*BLOCK_SIZE};
@@ -114,9 +116,9 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
         buffer<unsigned char, 1> in_b_buff {input_b, width*height};
 
         buffer<unsigned char, 1> out_buff {output_image, width*height*3};
-      
+        event e;
 
-        Q.submit([&](handler &cgh){
+        e=Q.submit([&](handler &cgh){
             // input accessors(red, green, blue)
             const accessor<unsigned char, 1> in_r {in_r_buff, cgh, read_only};
             const accessor<unsigned char, 1> in_g {in_g_buff, cgh, read_only};
@@ -147,6 +149,8 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
             ); //end parallel for
             
         }); // end queue
+
+        time_ms(e, "box_blur_local_memory_sycl");
     }
 }
 
@@ -164,7 +168,6 @@ int main(int argc, char** argv) {
     unsigned int width, height;
 
     // Load the data
-    printf("Load image\n");
     unsigned error = lodepng::decode(in_image, width, height, input_file);
     if(error) std::cout << "decoder error " << error << ": " << lodepng_error_text(error) << std::endl;
     // Prepare the data
