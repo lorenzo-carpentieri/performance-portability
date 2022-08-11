@@ -3,8 +3,8 @@
 #include <sycl/sycl.hpp>
 #include "time_ms.hpp"
 
-#define N 4
-#define BLOCK_SIZE 2
+#define N 1024
+#define BLOCK_SIZE 16
 
 
 using namespace sycl;
@@ -112,8 +112,8 @@ int main( int argc, char** argv)
             accessor<float, 1> c_matrix_acc {c_matrix_buff, cgh, read_write};
 
             // local accessor for tile
-            local_accessor<float, 2> tile_a{range<2>{N, N}, cgh};
-            local_accessor<float, 2> tile_b{range<2>{N, N}, cgh};
+            local_accessor<float, 2> tile_a{range<2>{BLOCK_SIZE, BLOCK_SIZE}, cgh};
+            local_accessor<float, 2> tile_b{range<2>{BLOCK_SIZE, BLOCK_SIZE}, cgh};
 
             cgh.parallel_for(nd_range<2>{grid, block}, square_matrix_mul_tiling<N>(
                 a_matrix_acc,
@@ -126,9 +126,9 @@ int main( int argc, char** argv)
         });
         time_ms(e, "matrix_mul_tiling_sycl");
     }
-
+    #ifdef DEBUG
     for(int i = 0; i < N*N; i++)
         std::cout << c_matrix[i] << ", ";
-    
+    #endif
     return 0;
 }
