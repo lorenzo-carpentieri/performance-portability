@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
 enable_language(CUDA)
 
-set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose reduction_tile32 reduction_warp_primitive)
+set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose reduction_tile32 reduction_binary)
 
 foreach(EXE IN LISTS EXECUTABLES)
 	add_executable(${EXE})
@@ -37,7 +37,6 @@ endforeach()
 add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_local_memory_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
-add_executable(box_blur_bidim ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_bidim_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 
 
 

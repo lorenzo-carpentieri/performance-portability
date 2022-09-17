@@ -4,7 +4,7 @@ project(Tesi_sycl)
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sycl)
 # list exe
-set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling reduction_subgroup reduction_reduce_over_group)
+set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling reduction_subgroup reduction_binary)
 
 foreach(EXE IN LISTS EXECUTABLES)
 	add_executable(${EXE} ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)

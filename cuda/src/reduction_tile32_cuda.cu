@@ -79,7 +79,6 @@ int main()
     T* h_input = (T*)malloc(N * sizeof(T));
     T* h_output = (T*)malloc(sizeof(T));
 
-    int n_iterations = 200;
 
     if (!h_input) // Check if malloc was all right
         return -1;
@@ -112,12 +111,12 @@ int main()
     cudaMemcpy(h_output, d_output, sizeof(T), cudaMemcpyDeviceToHost);
 
 
-    #ifdef DEBUG
+    // #ifdef DEBUG
     if (*h_output == N)
         printf("pass\n");
     else
         printf("fail, result: %f\n", *h_output);
-    #endif
+    // #endif
 
     cudaDeviceSynchronize();
     

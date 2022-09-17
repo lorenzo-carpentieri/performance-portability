@@ -48,8 +48,6 @@ int main (){
     T* input = (T*)malloc(N * sizeof(T));
     T* output = (T*)malloc(sizeof(T));
 
-    int n_iterations = 200;
-
     if (!input) // Check if malloc was all right
         return -1;
 
@@ -78,12 +76,12 @@ int main (){
         time_ms(e, "reduction_sycl");
     }
 
-    #ifdef DEBUG
+    // #ifdef DEBUG
     if(*output==N)
         printf("Test PASS\n");
     else 
         printf("Test FAIL\n");
-    #endif
+    // #endif
 
 
 }

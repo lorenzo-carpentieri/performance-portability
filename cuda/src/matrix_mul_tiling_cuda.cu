@@ -10,7 +10,7 @@
 using namespace std;
 using namespace chrono;
 
-#define BLOCK_SIZE 2
+#define BLOCK_SIZE 16
 
 // Matrix square with size multiple of BLOCK_SIZE
 __global__ void gpu_square_matrix_mult(float *d_a, float *d_b, float *d_result, int n) 

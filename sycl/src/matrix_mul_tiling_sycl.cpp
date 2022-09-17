@@ -90,8 +90,8 @@ int main( int argc, char** argv)
 
   
     for(int i = 0; i < (N*N); ++i){
-        a_matrix[i] = (float) i+1;
-        b_matrix[i] = (float) i+1;
+        a_matrix[i] = (float) 1;
+        b_matrix[i] = (float) 1;
         c_matrix[i] = 0.0;
     }
 
@@ -126,9 +126,11 @@ int main( int argc, char** argv)
         });
         time_ms(e, "matrix_mul_tiling_sycl");
     }
-    #ifdef DEBUG
+    // #ifdef DEBUG
     for(int i = 0; i < N*N; i++)
-        std::cout << c_matrix[i] << ", ";
-    #endif
+        if(c_matrix[i]!= N)
+            std::cout << "fail" << std::endl;
+    std::cout<< "pass" <<  std::endl;
+    // #endif
     return 0;
 }
