@@ -8,9 +8,12 @@
 // integral multiple of BLOCK_ROWS
 #define TILE_DIM 32
 #define BLOCK_ROWS 8
-#define SIZE_X 2048
-#define SIZE_Y 2048
-
+#ifndef SIZE_X
+    #define SIZE_X 2048
+#endif
+#ifndef SIZE_Y
+    #define SIZE_Y 2048
+#endif
 
 using namespace sycl;
 

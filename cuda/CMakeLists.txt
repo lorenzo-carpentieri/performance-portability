@@ -43,7 +43,8 @@ add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_cuda.cu
 # Set compile time variable
 # target_compile_definitions(nbody PRIVATE N=15104)
 add_compile_definitions(MATRIX_SIZE=2048 
-						SIZE_BODY=15104 
+						SIZE_BODY=15104
+						SIZE_X= 8192 SIZE_Y= 8192 #matrix_transpose sizes
 						SIZE_REDUCTION=61440
 						RADIUS=5)
 
