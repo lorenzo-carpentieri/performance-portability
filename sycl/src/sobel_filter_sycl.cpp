@@ -7,38 +7,42 @@
 #include "../include/time_ms.hpp"
 
 #define BLOCK_SIZE 512
+#ifndef RADIUS
+    #define RADIUS 3
+#endif
 using namespace sycl;
 
 class sobel_filter{
     private:
+        const uint size;
         const accessor<sycl::float3, 1, access_mode::read> in;
-        const accessor<float, 1, access_mode::read> kernel;
         accessor<sycl::float3, 1, access_mode::read_write> out;
+        const accessor<float, 1, access_mode::read> kernel;
 
-        const int size;
+
+       
 
     public:
         sobel_filter(
+            const int &size,
             const accessor<sycl::float3, 1, access_mode::read>& in,
             accessor<sycl::float3, 1, access_mode::read_write>& out,
-            const int &size,
             const accessor<float, 1, access_mode::read> kernel
             
         ):
+        size(size),
         in(in),
         out(out),
-        size(size),
         kernel(kernel)
         {}
 
         void operator()(id<2> gid) const {
-            int x = gid[0];
-            int y = gid[1];
+            uint x = gid[0];
+            uint y = gid[1];
             
            
             sycl::float3 Gx = sycl::float3(0, 0, 0);
             sycl::float3 Gy = sycl::float3(0, 0, 0);
-            const int radius = 3;
             // constant-size loops in [0,1,2]
             for(int x_shift = 0; x_shift < 3; x_shift++) {
                 for(int y_shift = 0; y_shift < 3; y_shift++) {
@@ -55,8 +59,8 @@ class sobel_filter{
                     // sample color
                     sycl::float3 sample = in[xs*size+ys];
                     // convolution calculation
-                    int offset_x = x_shift + y_shift * radius;
-                    int offset_y = y_shift + x_shift * radius;
+                    int offset_x = x_shift + y_shift * RADIUS;
+                    int offset_y = y_shift + x_shift * RADIUS;
 
                     float conv_x = kernel[offset_x];
                     sycl::float3 conv4_x = sycl::float3(conv_x);
@@ -90,7 +94,7 @@ void filter (sycl::float3* input_image, sycl::float3* output_image, int width, i
         buffer<sycl::float3, 1> in_buff {input_image, width*height};
         buffer<sycl::float3, 1> out_buff {output_image, width*height};
         // input image is N x N
-        const size_t size = width;
+        const uint size = width;
         event e;
         range<2> range{size, size};
 
@@ -102,9 +106,9 @@ void filter (sycl::float3* input_image, sycl::float3* output_image, int width, i
 
 
             cgh.parallel_for(range, sobel_filter(
+                    size,
                     in,
                     out, 
-                    size,
                     kernel_acc
                 ) //end blur class
             ); //end parallel for
@@ -139,7 +143,7 @@ int main(int argc, char** argv) {
 
     // After image loading I take just the color rgb without the alpha channel  
     int where = 0;
-    for(int i = 0; i < in_image.size(); i++) {
+    for(int i = 0; i < static_cast<int>(in_image.size()); i++) {
         // skip the alpha channel
        if((i+1) % 4 != 0) {
            input_image[where] = in_image.at(i);
@@ -148,21 +152,21 @@ int main(int argc, char** argv) {
        }
     }
     
-    unsigned char* input_r = new unsigned char[width*height];
-    unsigned char* input_g = new unsigned char[width*height];
-    unsigned char* input_b = new unsigned char[width*height];
+    // unsigned char* input_r = new unsigned char[width*height];
+    // unsigned char* input_g = new unsigned char[width*height];
+    // unsigned char* input_b = new unsigned char[width*height];
 
     sycl::float3* input_rgb = (sycl::float3*) malloc(sizeof(sycl::float3)* width*height);
     
 
-    for(int i = 0; i < width * height; i++)
+    for(uint i = 0; i < width * height; i++)
         input_rgb[i] = {input_image[i*3]/255.f, input_image[i*3+1]/255.f, input_image[i*3+2]/255.f};
 
     
     // Run the filter on it
     filter(input_rgb, output_rgb, width, height);
 
-    for(int i = 0; i < width * height; i++){
+    for(uint i = 0; i < width * height; i++){
         int j = i*3;
         output_image[j] = output_rgb[i].x()*255.f;
         output_image[j+1] = output_rgb[i].y()*255.f;
@@ -175,7 +179,7 @@ int main(int argc, char** argv) {
     // Prepare data for output
     // Add alpha channel in out image
     std::vector<unsigned char> out_image;
-    for(int i = 0; i < width*height*3; i++) {
+    for(uint i = 0; i < width*height*3; i++) {
         out_image.push_back(output_image[i]);
         if((i+1) % 3 == 0) {
             out_image.push_back(255);

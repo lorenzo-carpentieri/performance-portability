@@ -11,8 +11,10 @@ using namespace sycl;
 #define T float
 
 #define BLOCK_SIZE 512
-#define N 30720
-#define N_BLOCKS (N/BLOCK_SIZE)
+#ifndef SIZE_REDUCTION
+    #define SIZE_REDUCTION 30720
+#endif
+#define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
 
 
 class binary_reduction{
@@ -48,10 +50,10 @@ class binary_reduction{
             // starting index 
             unsigned int i = group.get_group_id(0) * BLOCK_SIZE * 2 + idx;
             grid_size = grid_size << 1;
-            while (i < N) {
+            while (i < SIZE_REDUCTION) {
                 my_sum += input[i];
                 
-                if ((i + BLOCK_SIZE) < N)
+                if ((i + BLOCK_SIZE) < SIZE_REDUCTION)
                     my_sum += input[i + BLOCK_SIZE];
 
                 i += grid_size;
@@ -91,13 +93,13 @@ class binary_reduction{
 int main()
 {
     
-    T *h_input = (T *) malloc(N * sizeof(T));
+    T *h_input = (T *) malloc(SIZE_REDUCTION * sizeof(T));
     T *h_output = (T *) malloc(sizeof(T));
 
     if (!h_input) // Check if malloc was all right
         return -1;
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < SIZE_REDUCTION; i++)
         h_input[i] = 1.0f;
     
 
@@ -108,9 +110,9 @@ int main()
     
     {
         // Init buffer
-        buffer<T,1> in_buff {h_input, N};
+        buffer<T,1> in_buff {h_input, SIZE_REDUCTION};
         buffer<T, 1> out_buff {h_output, 1};
-
+        
         // event
         event e;
         e = Q.submit([&](handler &cgh){
@@ -121,7 +123,7 @@ int main()
                 local_accessor<T, 1> local_acc{range<1>{BLOCK_SIZE}, cgh};
 
                 cgh.parallel_for(
-                    nd_range<1>{N, BLOCK_SIZE},
+                    nd_range<1>{SIZE_REDUCTION, BLOCK_SIZE},
                     binary_reduction(
                         in_acc,
                         out_acc,
@@ -136,7 +138,7 @@ int main()
 
     
     // #ifdef DEBUG
-    if (*h_output == N)
+    if (*h_output == SIZE_REDUCTION)
         printf("pass\n");
     else
         printf("fail, result: %f\n", *h_output);

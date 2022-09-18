@@ -4,7 +4,7 @@ project(Tesi_sycl)
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sycl)
 # list exe
-set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling reduction_subgroup reduction_binary)
+set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling reduction_subgroup reduction_binary class_reducer)
 
 foreach(EXE IN LISTS EXECUTABLES)
 	add_executable(${EXE} ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
@@ -43,7 +43,12 @@ add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_sycl.cpp ${CMAK
 add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_local_memory_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
 add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
 
-
+# Set compile time variable
+# target_compile_definitions(nbody PRIVATE SIZE_BODY=15104)
+add_compile_definitions(MATRIX_SIZE=2048 
+						SIZE_BODY=15104 
+						SIZE_REDUCTION=61440
+						RADIUS=5)
 
 if(SYCL_BACKEND STREQUAL hipSYCL)
 		find_package(hipSYCL REQUIRED)

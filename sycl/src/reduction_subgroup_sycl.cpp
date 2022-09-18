@@ -3,20 +3,22 @@
 #include <stdio.h>
 #include "time_ms.hpp"
 
-#define N 30720
+#ifndef SIZE_REDUCTION
+    #define SIZE_REDUCTION 30720
+#endif
 #define BLOCK_SIZE 512
-#define N_BLOCKS (N/BLOCK_SIZE)
+#define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
 #define T float
 
 using namespace sycl;
 template<class X>
-class reduce{
+class sub_group_reduce{
     private:
             accessor<X, 1, access_mode::read> in;
             accessor<X, 1, access_mode::read_write> out;
             local_accessor<T,1> local_data;
     public:
-        reduce(
+        sub_group_reduce(
             accessor<X, 1, access_mode::read> in,
             accessor<X, 1, access_mode::read_write> out,
             local_accessor<X,1> local_data)
@@ -45,18 +47,18 @@ class reduce{
 };
 
 int main (){
-    T* input = (T*)malloc(N * sizeof(T));
+    T* input = (T*)malloc(SIZE_REDUCTION * sizeof(T));
     T* output = (T*)malloc(sizeof(T));
 
     if (!input) // Check if malloc was all right
         return -1;
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < SIZE_REDUCTION; i++)
         input[i] = 1.0f;
 
     queue Q{gpu_selector(), property::queue::enable_profiling()};
     {
-        buffer<T, 1> in_buff{input, N};
+        buffer<T, 1> in_buff{input, SIZE_REDUCTION};
         buffer<T, 1> out_buff{output, 1};
         range<1> grid{BLOCK_SIZE*N_BLOCKS};
         range<1> block{BLOCK_SIZE};
@@ -67,7 +69,7 @@ int main (){
             
             local_accessor<T,1> local_data{BLOCK_SIZE, cgh};
 
-            cgh.parallel_for(nd_range<1>{grid, block}, reduce<T>(
+            cgh.parallel_for(nd_range<1>{grid, block}, sub_group_reduce<T>(
                 in_acc,
                 out_acc,
                 local_data
@@ -77,7 +79,7 @@ int main (){
     }
 
     // #ifdef DEBUG
-    if(*output==N)
+    if(*output==SIZE_REDUCTION)
         printf("Test PASS\n");
     else 
         printf("Test FAIL\n");

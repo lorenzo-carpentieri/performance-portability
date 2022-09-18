@@ -12,6 +12,7 @@ set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose reduc
 
 foreach(EXE IN LISTS EXECUTABLES)
 	add_executable(${EXE})
+
 	target_include_directories(${EXE}
 	PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -21,6 +22,7 @@ foreach(EXE IN LISTS EXECUTABLES)
 	# ${CMAKE_CURRENT_SOURCE_DIR}/src/sample_app.cpp
 	)
 endforeach()
+
 # Generate ptx 
 # add_library(prova OBJECT ${CMAKE_CURRENT_SOURCE_DIR}/src/prova.cu  ${CMAKE_CURRENT_SOURCE_DIR}/src/prova.cuh)
 # set_property(TARGET prova PROPERTY CUDA_PTX_COMPILATION ON)
@@ -38,8 +40,12 @@ add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_lo
 add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 
-
-
+# Set compile time variable
+# target_compile_definitions(nbody PRIVATE N=15104)
+add_compile_definitions(MATRIX_SIZE=2048 
+						SIZE_BODY=15104 
+						SIZE_REDUCTION=61440
+						RADIUS=5)
 
 
 
@@ -47,4 +53,5 @@ message(STATUS "---- CUDA CONFIG ----")
 message(STATUS "CMAKE_CUDA_COMPILER = ${CMAKE_CUDA_COMPILER}")
 message(STATUS "CMAKE_CUDA_COMPILER_ID = ${CMAKE_CUDA_COMPILER_ID}")
 message(STATUS "CMAKE_CUDA_COMPILER_VERSION = ${CMAKE_CUDA_COMPILER_VERSION}")
+message(STATUS "CMAKE_CUDA_ARCHITECTURES = ${CMAKE_CUDA_ARCHITECTURES}")
 message(STATUS "---- CUDA CONFIG ----\n")

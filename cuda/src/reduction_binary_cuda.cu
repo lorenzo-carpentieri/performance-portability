@@ -1,18 +1,18 @@
 /*
     Baseline
 */
-#include "cuda_runtime.h"
-#include "cuda.h"
 #include <device_launch_parameters.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 
 #define T float
-
+#ifndef SIZE_REDUCTION
+    #define SIZE_REDUCTION 30720
+#endif
 #define BLOCK_SIZE 512
-#define N 30720
-#define N_BLOCKS (N/BLOCK_SIZE)
+// #define SIZE_REDUCTION 30720
+#define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
 
 __device__ __forceinline__ void unrolling(volatile T* local_data, int thread_id) {
     
@@ -38,10 +38,10 @@ __global__ void reduction(T* input, T* output)
     // starting index 
     unsigned int i = blockIdx.x * BLOCK_SIZE * 2 + threadIdx.x;
     grid_size = grid_size << 1;
-    while (i < N) {
+    while (i < SIZE_REDUCTION) {
         my_sum += input[i];
            
-        if ((i + BLOCK_SIZE) < N)
+        if ((i + BLOCK_SIZE) < SIZE_REDUCTION)
             my_sum += input[i + BLOCK_SIZE];
 
         i += grid_size;
@@ -75,7 +75,7 @@ int main()
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
-    T *h_input = (T *) malloc(N * sizeof(T));
+    T *h_input = (T *) malloc(SIZE_REDUCTION * sizeof(T));
     T *h_output = (T *) malloc(sizeof(T));
 
      
@@ -83,12 +83,12 @@ int main()
     if (!h_input) // Check if malloc was all right
         return -1;
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < SIZE_REDUCTION; i++)
         h_input[i] = 1.0f;
 
     // Allocating memory for device
     T* d_input, *d_output;
-    cudaMalloc((void **) &d_input, N * sizeof(T));
+    cudaMalloc((void **) &d_input, SIZE_REDUCTION * sizeof(T));
     cudaMalloc((void**) &d_output, sizeof(T));
 
     // Copying input data from host to device, executing kernel and copying result from device to host
@@ -96,7 +96,7 @@ int main()
     *h_output = 0;
     cudaEventRecord(start);
 
-    cudaMemcpy(d_input, h_input, N * sizeof(T), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_input, h_input, SIZE_REDUCTION * sizeof(T), cudaMemcpyHostToDevice);
     cudaMemcpy(d_output, h_output, sizeof(T), cudaMemcpyHostToDevice);
         
     reduction<<<N_BLOCKS, BLOCK_SIZE>>> (d_input, d_output);
@@ -109,7 +109,7 @@ int main()
     // Take time in ms
     cudaEventElapsedTime(&time, start, stop);
     printf("%s, %f\n", "reduction_binary_cuda", time);
-    if (*h_output == N)
+    if (*h_output == SIZE_REDUCTION)
         printf("pass\n");
     else
         printf("fail, result: %f\n", *h_output);

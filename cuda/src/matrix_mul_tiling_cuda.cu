@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include <cuda_runtime.h>
 #include <iostream>
 #include <chrono>
 
@@ -10,7 +9,11 @@
 using namespace std;
 using namespace chrono;
 
-#define BLOCK_SIZE 16
+#ifndef MATRIX_SIZE
+    #define MATRIX_SIZE 1024
+#endif
+
+#define BLOCK_SIZE 32
 
 // Matrix square with size multiple of BLOCK_SIZE
 __global__ void gpu_square_matrix_mult(float *d_a, float *d_b, float *d_result, int n) 
@@ -46,59 +49,50 @@ __global__ void gpu_square_matrix_mult(float *d_a, float *d_b, float *d_result, 
         d_result[row * n + col] = tmp;
 }
 
-int main (int argc, char ** argv) {
+int main () {
      cudaEvent_t start, stop;
     float time = 0;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
-    size_t N;
-
-    if(argc != 2) {
-        fprintf(stderr, "Usage: %s <N> \n", argv[0]);
-
-        return EXIT_FAILURE;
-    }
-
-    N = atoi(argv[1]);
 
 
     // Allocate matrix (see if can be use C++ classes)
     // Host data
-    float *A_h = static_cast<float *>(malloc(sizeof(float) * N * N));
-    float *B_h = static_cast<float *>(malloc(sizeof(float) * N * N));
-    float *C_h = static_cast<float *>(malloc(sizeof(float) * N * N));
+    float *A_h = static_cast<float *>(malloc(sizeof(float) * MATRIX_SIZE * MATRIX_SIZE));
+    float *B_h = static_cast<float *>(malloc(sizeof(float) * MATRIX_SIZE * MATRIX_SIZE));
+    float *C_h = static_cast<float *>(malloc(sizeof(float) * MATRIX_SIZE * MATRIX_SIZE));
 	
     // Device data
     float *A_d, *B_d, *C_d; // device data
-    cudaMalloc((void **) &A_d, N * N * sizeof(float));
-    cudaMalloc((void **) &B_d, sizeof(float) * N * N);
-    cudaMalloc((void **) &C_d, sizeof(float) * N * N);
+    cudaMalloc((void **) &A_d, MATRIX_SIZE * MATRIX_SIZE * sizeof(float));
+    cudaMalloc((void **) &B_d, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE);
+    cudaMalloc((void **) &C_d, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE);
 
     // Data initialization
 
 	// Initialization
-    for(int i {0}; i < N * N; i++)
+    for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
         A_h[i] = i+1;
     
-    for(int i {0}; i < N * N; i++)
+    for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
         B_h[i] = i+1;
     
-    for(int i {0}; i < N * N; i++)
+    for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
         C_h[i] = 0.0f;
     
-    dim3 grid(N/BLOCK_SIZE, N/BLOCK_SIZE); 
+    dim3 grid(MATRIX_SIZE/BLOCK_SIZE, MATRIX_SIZE/BLOCK_SIZE); 
     dim3 threads(BLOCK_SIZE, BLOCK_SIZE);
     
   
     // Data movement 
-    cudaMemcpy(A_d, A_h, N * N * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(B_d, B_h, N * N * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(A_d, A_h, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(B_d, B_h, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyHostToDevice);
 
-    cudaMemset(C_d, 0, N * N * sizeof(float));
+    cudaMemset(C_d, 0, MATRIX_SIZE * MATRIX_SIZE * sizeof(float));
     // Take start time
     cudaEventRecord(start);
-    gpu_square_matrix_mult<<<grid, threads>>>(A_d, B_d,C_d,N);
+    gpu_square_matrix_mult<<<grid, threads>>>(A_d, B_d,C_d,MATRIX_SIZE);
 
     cudaEventRecord(stop);
     // Wait stop event
@@ -109,11 +103,11 @@ int main (int argc, char ** argv) {
     
     printf("%s, %f\n", "matrix_mul_tiling_cuda", time);
     // Data from device to host
-    cudaMemcpy(C_h, C_d, N * N * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(C_h, C_d, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     
     #ifdef DEBUG
-    for(int i = 0; i < N*N; i++){
+    for(int i = 0; i < MATRIX_SIZE*MATRIX_SIZE; i++){
         std::cout << C_h[i] << ", ";
     }
     #endif

@@ -1,10 +1,14 @@
 #include <iostream>
 #include <cstdlib>
 #include "../include/lodepng.h"
-#include <cuda_runtime.h>
 #include <functional>
 #include <cmath>
 
+
+
+#ifndef RADIUS
+    #define RADIUS 3
+#endif
 __device__ float clamp(float x, float a, float b)
 {
   return max(a, min(b, x));
@@ -19,7 +23,6 @@ void sobel_filter(float3* in, float3* out, int* size, float* kernel) {
     
     float3 Gx = float3{0, 0, 0};
     float3 Gy = float3{0, 0, 0};
-    const int radius = 3;
     // constant-size loops in [0,1,2]
     for(int x_shift = 0; x_shift < 3; x_shift++) {
         for(int y_shift = 0; y_shift < 3; y_shift++) {
@@ -36,8 +39,8 @@ void sobel_filter(float3* in, float3* out, int* size, float* kernel) {
             // sample color
             float3 sample = in[xs * (*size)+ys];
             // convolution calculation
-            int offset_x = x_shift + y_shift * radius;
-            int offset_y = y_shift + x_shift * radius;
+            int offset_x = x_shift + y_shift * RADIUS;
+            int offset_y = y_shift + x_shift * RADIUS;
 
             float conv_x = kernel[offset_x];
 

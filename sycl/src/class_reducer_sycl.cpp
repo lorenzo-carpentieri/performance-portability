@@ -5,14 +5,16 @@
 #include <time_ms.hpp>
 
 using namespace sycl;
-#define N 30720
+#ifndef SIZE_REDUCTION
+    #define SIZE_REDUCTION 30720
+#endif
 #define T float
 int main(){
     // input data
-    T *h_input = (T *) malloc(N * sizeof(T));
+    T *h_input = (T *) malloc(SIZE_REDUCTION * sizeof(T));
     // output
     T sumResult = 0;
-    for(int i=0; i < N; i++)
+    for(int i=0; i < SIZE_REDUCTION; i++)
         h_input[i]= 1;
 
     queue q{gpu_selector(), property::queue::enable_profiling()};
@@ -21,7 +23,7 @@ int main(){
     {
         // Buffers init
        
-        buffer<T, 1> inBuff {h_input, N};
+        buffer<T, 1> inBuff {h_input, SIZE_REDUCTION};
         buffer<T, 1> sumBuf { &sumResult, 1 };
     
 
@@ -38,7 +40,7 @@ int main(){
         // For each reduction variable, the implementation:
         // - Creates a corresponding reducer
         // - Passes a reference to the reducer to the lambda as a parameter
-        cgh.parallel_for(range<1>{N},
+        cgh.parallel_for(range<1>{SIZE_REDUCTION},
             sumReduction,
             [=](id<1> idx, auto& sum) {
             // plus<>() corresponds to += operator, so sum can be updated via += or combine()
@@ -50,7 +52,7 @@ int main(){
 
     }  
 
-    if(sumResult==N){
+    if(sumResult==SIZE_REDUCTION){
         std::cout << "pass" << std::endl;
         return -1;
     }

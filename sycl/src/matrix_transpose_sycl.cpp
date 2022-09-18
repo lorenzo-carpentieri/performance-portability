@@ -11,8 +11,6 @@
 #define SIZE_X 2048
 #define SIZE_Y 2048
 
-// Number of repetitions used for timing.
-#define NUM_REPS 100
 
 using namespace sycl;
 
@@ -69,7 +67,7 @@ class transposeCoalesced{
 };
 
 
-int main( int argc, char** argv)
+int main()
 {
     
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 

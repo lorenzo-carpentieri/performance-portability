@@ -6,6 +6,10 @@
 #include <sycl/sycl.hpp>
 #include "../include/time_ms.hpp"
 
+#ifndef RADIUS
+    #define RADIUS 3
+#endif
+
 #define BLOCK_SIZE 512
 using namespace sycl;
 class blur{
@@ -32,18 +36,17 @@ class blur{
             int group_id = group.get_group_id();
             int local_id = group.get_local_id(0);
 
-            const unsigned int offset = group_id * BLOCK_SIZE + local_id;
+            const int offset = group_id * BLOCK_SIZE + local_id;
             int x = offset % w;
             int y = (offset-x)/w;
-            int fsize = 5; // Filter size
             if(offset < w*h) {
 
                 float output_red = 0;
                 float output_green = 0;
                 float output_blue = 0;
                 int hits = 0;
-                for(int ox = -fsize; ox < fsize+1; ++ox) {
-                    for(int oy = -fsize; oy < fsize+1; ++oy) {
+                for(int ox = -RADIUS; ox < RADIUS+1; ++ox) {
+                    for(int oy = -RADIUS; oy < RADIUS+1; ++oy) {
                         if((x+ox) > -1 && (x+ox) < w && (y+oy) > -1 && (y+oy) < h) {
                             const int currentoffset = (offset+ox+oy*w)*3;
                             output_red += in[currentoffset]; 
@@ -112,7 +115,7 @@ int main(int argc, char** argv) {
 
     // After image loading I take just the color rgb without the alpha channel  
     int where = 0;
-    for(int i = 0; i < in_image.size(); i++) {
+    for(int i = 0; i < static_cast<int>(in_image.size()); i++) {
         // skip the alpha channel
        if((i+1) % 4 != 0) {
            input_image[where] = in_image.at(i);
@@ -126,7 +129,7 @@ int main(int argc, char** argv) {
     unsigned char* input_b = new unsigned char[width*height];
 
 
-    for(int i = 0; i < width * height; i++){
+    for(u_int i = 0; i < width * height; i++){
         input_r[i] = input_image[i*3];
         input_g[i] = input_image[i*3+1];
         input_b[i] = input_image[i*3+2];
@@ -142,7 +145,7 @@ int main(int argc, char** argv) {
     // Prepare data for output
     // Add alpha channel in out image
     std::vector<unsigned char> out_image;
-    for(int i = 0; i < width*height*3; i++) {
+    for(uint i = 0;  i < width*height*3; i++) {
         out_image.push_back(output_image[i]);
         // printf("id: %d, output_image_val: %d\n", i, output_image[i]);
         if((i+1) % 3 == 0) {

@@ -3,13 +3,15 @@
 #include <sycl/sycl.hpp>
 #include "time_ms.hpp"
 
-#define N 1024
-#define BLOCK_SIZE 16
+#ifndef MATRIX_SIZE
+    #define MATRIX_SIZE 1024
+#endif
+#define BLOCK_SIZE 32
 
 
 using namespace sycl;
 
-//only square matrix with N multple of BLOCK_SIZE
+//only square matrix with MATRIX_SIZE multple of BLOCK_SIZE
 template <int DIM_MATRIX>
 class square_matrix_mul_tiling{
     private:
@@ -72,7 +74,7 @@ class square_matrix_mul_tiling{
 };
 
 
-int main( int argc, char** argv)
+int main()
 {
     
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
@@ -81,7 +83,7 @@ int main( int argc, char** argv)
     event e;
     
     // size of memory required to store the matrix
-    const int mem_size = sizeof(float) * N*N;
+    const int mem_size = sizeof(float) * MATRIX_SIZE*MATRIX_SIZE;
     
    
     float *a_matrix = (float*) malloc(mem_size);
@@ -89,7 +91,7 @@ int main( int argc, char** argv)
     float *c_matrix = (float*) malloc(mem_size);
 
   
-    for(int i = 0; i < (N*N); ++i){
+    for(int i = 0; i < (MATRIX_SIZE*MATRIX_SIZE); ++i){
         a_matrix[i] = (float) 1;
         b_matrix[i] = (float) 1;
         c_matrix[i] = 0.0;
@@ -98,11 +100,11 @@ int main( int argc, char** argv)
     queue Q{gpu_selector(), property::queue::enable_profiling()};
 
     {
-        range<2> grid {N, N}; 
+        range<2> grid {MATRIX_SIZE, MATRIX_SIZE}; 
         range<2> block{BLOCK_SIZE, BLOCK_SIZE};
-        buffer<float, 1> a_matrix_buff {a_matrix, N*N};
-        buffer<float, 1> b_matrix_buff {b_matrix, N*N};
-        buffer<float, 1> c_matrix_buff {c_matrix, N*N};
+        buffer<float, 1> a_matrix_buff {a_matrix, MATRIX_SIZE*MATRIX_SIZE};
+        buffer<float, 1> b_matrix_buff {b_matrix, MATRIX_SIZE*MATRIX_SIZE};
+        buffer<float, 1> c_matrix_buff {c_matrix, MATRIX_SIZE*MATRIX_SIZE};
 
 
         e = Q.submit([&](handler &cgh){
@@ -115,7 +117,7 @@ int main( int argc, char** argv)
             local_accessor<float, 2> tile_a{range<2>{BLOCK_SIZE, BLOCK_SIZE}, cgh};
             local_accessor<float, 2> tile_b{range<2>{BLOCK_SIZE, BLOCK_SIZE}, cgh};
 
-            cgh.parallel_for(nd_range<2>{grid, block}, square_matrix_mul_tiling<N>(
+            cgh.parallel_for(nd_range<2>{grid, block}, square_matrix_mul_tiling<MATRIX_SIZE>(
                 a_matrix_acc,
                 b_matrix_acc,
                 c_matrix_acc,
@@ -127,8 +129,8 @@ int main( int argc, char** argv)
         time_ms(e, "matrix_mul_tiling_sycl");
     }
     // #ifdef DEBUG
-    for(int i = 0; i < N*N; i++)
-        if(c_matrix[i]!= N)
+    for(int i = 0; i < MATRIX_SIZE*MATRIX_SIZE; i++)
+        if(c_matrix[i]!= MATRIX_SIZE)
             std::cout << "fail" << std::endl;
     std::cout<< "pass" <<  std::endl;
     // #endif

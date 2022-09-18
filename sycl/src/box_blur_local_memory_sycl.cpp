@@ -6,9 +6,10 @@
 #include <sycl/sycl.hpp>
 #include "../include/time_ms.hpp"
 
-
-#define R              5
-#define D              (R*2+1)
+#ifndef RADIUS
+    #define RADIUS         3
+#endif
+#define D              (RADIUS*2+1)
 #define S              (D*D)
 #define BLOCK_SIZE     512
 #define IMG_SIZE       512
@@ -67,7 +68,7 @@ class blur{
             int row = 0;
             
             //load data in shared memory: each thread load in shared memory the upper and lower row 
-            for(int i = -R; i < R + 1; i++){
+            for(int i = -RADIUS; i < RADIUS + 1; i++){
                     if((static_cast<int>(group_id) + i) > -1 && (static_cast<int>(group_id) + i) < NUM_BLOCKS){
                         smem_r[row][local_id] = in_r[gidx+(i*w)];
                         smem_g[row][local_id] = in_g[gidx+(i*w)];
@@ -89,12 +90,12 @@ class blur{
                 float sum_b = 0;
                 int hits = 0;
             
-                for(int ox = -R; ox < R+1; ++ox) {
-                    for(int oy = -R; oy < R+1; ++oy) {
+                for(int ox = -RADIUS; ox < RADIUS+1; ++ox) {
+                    for(int oy = -RADIUS; oy < RADIUS+1; ++oy) {
                         if((x+ox) > -1 && (x+ox) < w && (y+oy) > -1 && (y+oy) < h) {
-                            sum_r += smem_r[R+ox][x+oy]; 
-                            sum_g += smem_g[R+ox][x+oy];
-                            sum_b += smem_b[R+ox][x+oy];
+                            sum_r += smem_r[RADIUS+ox][x+oy]; 
+                            sum_g += smem_g[RADIUS+ox][x+oy];
+                            sum_b += smem_b[RADIUS+ox][x+oy];
                             hits++;
                         }
                     }
@@ -176,7 +177,7 @@ int main(int argc, char** argv) {
 
     // After image loading I take just the color rgb without the alpha channel  
     int where = 0;
-    for(int i = 0; i < in_image.size(); i++) {
+    for(int i = 0; i < static_cast<int>(in_image.size()); i++) {
         // skip the alpha channel
        if((i+1) % 4 != 0) {
            input_image[where] = in_image.at(i);
@@ -190,7 +191,7 @@ int main(int argc, char** argv) {
     unsigned char* input_b = new unsigned char[width*height];
 
 
-    for(int i = 0; i < width * height; i++){
+    for(uint i = 0; i < width * height; i++){
         input_r[i] = input_image[i*3];
         input_g[i] = input_image[i*3+1];
         input_b[i] = input_image[i*3+2];
@@ -207,7 +208,7 @@ int main(int argc, char** argv) {
     // Prepare data for output
     // Add alpha channel in out image
     std::vector<unsigned char> out_image;
-    for(int i = 0; i < width*height*3; i++) {
+    for(uint i = 0; i < width*height*3; i++) {
         out_image.push_back(output_image[i]);
         // printf("id: %d, output_image_val: %d\n", i, output_image[i]);
         if((i+1) % 3 == 0) {

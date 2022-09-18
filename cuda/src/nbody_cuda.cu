@@ -3,13 +3,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
-#include "cuda.h"
 
-#define N 30208
+#ifndef SIZE_BODY
+    #define SIZE_BODY 30208
+#endif
 #define BLOCK_SIZE 256
 #define DELTA_TIME 0.2f
 #define EPS2  1e-9f
-#define NUM_TILES (N + BLOCK_SIZE - 1) / BLOCK_SIZE
+#define NUM_TILES (SIZE_BODY + BLOCK_SIZE - 1) / BLOCK_SIZE
 
 __shared__ float4 shPosition[BLOCK_SIZE];
 
@@ -134,7 +135,7 @@ __global__ void calculate_forces(float4* old_pos, float4* old_vel, float4* new_p
 
 
 
-int main(const int argc, const char** argv) {
+int main() {
     cudaEvent_t start, stop;
     float time = 0;
     cudaEventCreate(&start);
@@ -143,7 +144,7 @@ int main(const int argc, const char** argv) {
 
     
 
-    int bytes = N * sizeof(float4);
+    int bytes = SIZE_BODY * sizeof(float4);
     float4 *pos = (float4*)malloc(bytes);
     float4 *vel = (float4*)malloc(bytes);
 
@@ -152,7 +153,7 @@ int main(const int argc, const char** argv) {
 
     // Initialization bodies pos and vel
     srand(10);
-    for(int i = 0; i < N; i++){
+    for(int i = 0; i < SIZE_BODY; i++){
         // pos
         pos[i].x= 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
         pos[i].y= 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
@@ -177,7 +178,7 @@ int main(const int argc, const char** argv) {
     
     
     
-    int nBlocks = (N % BLOCK_SIZE!=0) + N / BLOCK_SIZE;
+    int nBlocks = (SIZE_BODY % BLOCK_SIZE!=0) + SIZE_BODY / BLOCK_SIZE;
 
     // Start simulation
     cudaMalloc(&d_old_pos, bytes);
@@ -212,7 +213,7 @@ int main(const int argc, const char** argv) {
         
     #ifdef DEBUG
     // print results
-    for(int i = 0; i < N; i++){
+    for(int i = 0; i < SIZE_BODY; i++){
         printf("body: %d, new_pos_x: %.2f, new_pos_y: %.2f, new_pos_z: %.2f\n", i, new_pos[i].x, new_pos[i].y, new_pos[i].z);
         printf("body: %d, new_vel_x: %.2f, new_vel_y: %.2f, new_vel_z: %.2f\n", i, new_vel[i].x, new_vel[i].y, new_vel[i].z);
         printf("\n");

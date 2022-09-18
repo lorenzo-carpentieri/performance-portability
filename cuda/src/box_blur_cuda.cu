@@ -1,25 +1,26 @@
 #include <iostream>
 #include <cstdlib>
 #include "../include/lodepng.h"
-#include <cuda_runtime.h>
 #include <functional>
 #include <cmath>
 
+#ifndef RADIUS 
+    #define RADIUS 3
+#endif
 __global__
 void blur(unsigned char* input_image, unsigned char* output_image, int width, int height) {
 
     const unsigned int offset = blockIdx.x*blockDim.x + threadIdx.x;
     int x = offset % width;
     int y = (offset-x)/width;
-    int fsize = 5; // Filter size
     if(offset < width*height) {
 
         float output_red = 0;
         float output_green = 0;
         float output_blue = 0;
         int hits = 0;
-        for(int ox = -fsize; ox < fsize+1; ++ox) {
-            for(int oy = -fsize; oy < fsize+1; ++oy) {
+        for(int ox = -RADIUS; ox < RADIUS+1; ++ox) {
+            for(int oy = -RADIUS; oy < RADIUS+1; ++oy) {
                 if((x+ox) > -1 && (x+ox) < width && (y+oy) > -1 && (y+oy) < height) {
                     const int currentoffset = (offset+ox+oy*width)*3;
                     output_red += input_image[currentoffset]; 

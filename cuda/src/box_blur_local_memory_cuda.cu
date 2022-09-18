@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstdlib>
 #include "../include/lodepng.h"
-#include <cuda_runtime.h>
 #include <functional>
 #include <cmath>
 
@@ -65,8 +64,10 @@
 //         out[offset * 3+2] = sum_b / hits; 
 // }
 
-#define R              5
-#define D              (R*2+1)
+#ifndef RADIUS
+    #define RADIUS 5
+#endif
+#define D              (RADIUS*2+1)
 #define S              (D*D)
 #define BLOCK_SIZE     512
 #define IMG_SIZE       512
@@ -86,7 +87,7 @@ __global__ void monodimensional_blur(const unsigned char *in_r, const unsigned c
     int row = 0;
     
     //load data in shared memory: each thread load in shared memory the upper and lower row 
-    for(int i = -R; i < R + 1; i++){
+    for(int i = -RADIUS; i < RADIUS + 1; i++){
             if((static_cast<int>(blockIdx.x) + i) > -1 && (static_cast<int>(blockIdx.x) + i) < NUM_BLOCKS){
                 smem_r[row][threadIdx.x] = in_r[gidx+(i*w)];
                 smem_g[row][threadIdx.x] = in_g[gidx+(i*w)];
@@ -108,12 +109,12 @@ __global__ void monodimensional_blur(const unsigned char *in_r, const unsigned c
         float sum_b = 0;
         int hits = 0;
        
-        for(int ox = -R; ox < R+1; ++ox) {
-            for(int oy = -R; oy < R+1; ++oy) {
+        for(int ox = -RADIUS; ox < RADIUS+1; ++ox) {
+            for(int oy = -RADIUS; oy < RADIUS+1; ++oy) {
                 if((x+ox) > -1 && (x+ox) < w && (y+oy) > -1 && (y+oy) < h) {
-                    sum_r += smem_r[R+ox][x+oy]; 
-                    sum_g += smem_g[R+ox][x+oy];
-                    sum_b += smem_b[R+ox][x+oy];
+                    sum_r += smem_r[RADIUS+ox][x+oy]; 
+                    sum_g += smem_g[RADIUS+ox][x+oy];
+                    sum_b += smem_b[RADIUS+ox][x+oy];
                     hits++;
                 }
             }

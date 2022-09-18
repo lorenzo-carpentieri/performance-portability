@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <stdio.h>
 #include <vector>
@@ -5,11 +6,14 @@
 #include <sycl/sycl.hpp>
 #include "time_ms.hpp"
 
-#define N 30208
+#ifndef SIZE_BODY
+    #define SIZE_BODY 30208
+#endif
 #define BLOCK_SIZE 256
 #define DELTA_TIME 0.2f
 #define EPS2  1e-9f
-#define NUM_TILES (N + BLOCK_SIZE - 1) / BLOCK_SIZE
+#define NUM_TILES (SIZE_BODY + BLOCK_SIZE - 1) / BLOCK_SIZE
+
 
 
 sycl::float3 bodyBodyInteraction(sycl::float4 bi, sycl::float4 bj, sycl::float3 ai)
@@ -106,10 +110,9 @@ class calculate_forces{
         }
 };
 
-int main(const int argc, const char** argv) {    
-    const int nIters = 2;  // simulation iterations
+int main() {    
     
-    int bytes = N * sizeof(sycl::float4);
+    int bytes = SIZE_BODY * sizeof(sycl::float4);
 
     sycl::float4 *pos = (sycl::float4*)malloc(bytes);
     sycl::float4 *vel = (sycl::float4*)malloc(bytes);
@@ -119,7 +122,7 @@ int main(const int argc, const char** argv) {
     
     // Initialization bodies pos and vel
     srand(10);
-    for(int i = 0; i < N; i++){
+    for(int i = 0; i < SIZE_BODY; i++){
         // pos
         pos[i][0]= 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
         pos[i][1]= 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
@@ -137,14 +140,14 @@ int main(const int argc, const char** argv) {
     
     {
         // buffer
-        sycl::buffer<sycl::float4,1> pos_buff {pos, N};
-        sycl::buffer<sycl::float4, 1> vel_buff {vel, N};
-        sycl::buffer<sycl::float4, 1> out_vel_buff {new_vel, N};
-        sycl::buffer<sycl::float4, 1> out_pos_buff{ new_pos, N};
+        sycl::buffer<sycl::float4,1> pos_buff {pos, SIZE_BODY};
+        sycl::buffer<sycl::float4, 1> vel_buff {vel, SIZE_BODY};
+        sycl::buffer<sycl::float4, 1> out_vel_buff {new_vel, SIZE_BODY};
+        sycl::buffer<sycl::float4, 1> out_pos_buff{ new_pos, SIZE_BODY};
         
             
         sycl::range<1> block{BLOCK_SIZE};
-        sycl::range<1> grid{N}; 
+        sycl::range<1> grid{SIZE_BODY}; 
         sycl::event e;
     
         e = Q.submit([&](sycl::handler &cgh) {
@@ -168,7 +171,7 @@ int main(const int argc, const char** argv) {
 
     #ifdef DEBUG
     // print results
-    for(int i = 0; i < N; i++){
+    for(int i = 0; i < SIZE_BODY; i++){
         printf("body: %d, new_pos_x: %.2f, new_pos_y: %.2f, new_pos_z: %.2f\n",  i, new_pos[i][0], new_pos[i][1], new_pos[i][2]);
         printf("body: %d, new_vel_x: %.2f, new_vel_y: %.2f, new_vel_z: %.2f\n",  i, new_vel[i][0], new_vel[i][1], new_vel[i][2]);
         printf("\n");

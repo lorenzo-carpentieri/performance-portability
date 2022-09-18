@@ -6,8 +6,13 @@
 // integral multiple of BLOCK_ROWS
 #define TILE_DIM 32
 #define BLOCK_ROWS 8
-#define SIZE_X 4096
-#define SIZE_Y 4096
+#ifndef SIZE_X
+    #define SIZE_X 4096
+#endif
+
+#ifndef SIZE_Y
+    #define SIZE_Y 4096
+#endif
 
 // Number of repetitions used for timing.
 #define NUM_REPS 100
@@ -41,7 +46,7 @@ __global__ void transposeCoalesced(float *odata, float *idata, int width, int he
 
 
 
-int main( int argc, char** argv)
+int main()
 {
     
     cudaEvent_t start, stop;

@@ -3,8 +3,6 @@
     While halving the tiles in each block
 */
 
-#include "cuda_runtime.h"
-#include "cuda.h"
 #include <device_launch_parameters.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,8 +11,11 @@
 
 #define T float
 #define BLOCK_SIZE 512
-#define N 30720 
-#define N_BLOCKS 60
+
+#ifndef SIZE_REDUCTION    
+    #define SIZE_REDUCTION 30720 
+#endif
+#define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
 #define NUM_TILES_PER_BLOCK (BLOCK_SIZE / 32)
 
 using namespace cooperative_groups;
@@ -47,9 +48,9 @@ __global__ void reduction(T* input, T* output)
 
     unsigned int i = block_id * BLOCK_SIZE * 2 + thread_id;
     grid_size = grid_size << 1;
-    while (i < N) {
+    while (i < SIZE_REDUCTION) {
         my_sum += input[i];
-        if ((i + BLOCK_SIZE) < N) {
+        if ((i + BLOCK_SIZE) < SIZE_REDUCTION) {
             my_sum += input[i + BLOCK_SIZE];
         }
         i += grid_size;
@@ -76,26 +77,26 @@ int main()
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
 
-    T* h_input = (T*)malloc(N * sizeof(T));
+    T* h_input = (T*)malloc(SIZE_REDUCTION * sizeof(T));
     T* h_output = (T*)malloc(sizeof(T));
 
 
     if (!h_input) // Check if malloc was all right
         return -1;
 
-    for (int i = 0; i < N; i++)
+    for (int i = 0; i < SIZE_REDUCTION; i++)
         h_input[i] = 1.0f;
 
     // Allocating memory for device
     T* d_input, * d_output;
-    cudaMalloc((void**)&d_input, N * sizeof(T));
+    cudaMalloc((void**)&d_input, SIZE_REDUCTION * sizeof(T));
     cudaMalloc((void**)&d_output, sizeof(T));
 
     // Copying input data from host to device, executing kernel and copying result from device to host
 
     *h_output = 0;
     
-    cudaMemcpy(d_input, h_input, N * sizeof(T), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_input, h_input, SIZE_REDUCTION * sizeof(T), cudaMemcpyHostToDevice);
     cudaMemcpy(d_output, h_output, sizeof(T), cudaMemcpyHostToDevice);
 
     cudaEventRecord(start);
@@ -112,7 +113,7 @@ int main()
 
 
     // #ifdef DEBUG
-    if (*h_output == N)
+    if (*h_output == SIZE_REDUCTION)
         printf("pass\n");
     else
         printf("fail, result: %f\n", *h_output);
