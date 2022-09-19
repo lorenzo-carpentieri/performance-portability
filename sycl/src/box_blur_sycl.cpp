@@ -3,7 +3,7 @@
 #include "../include/lodepng.h"
 #include <functional>
 #include <cmath>
-#include <sycl/sycl.hpp>
+#include <sycl_defines.hpp>
 #include "../include/time_ms.hpp"
 
 #ifndef RADIUS
@@ -11,8 +11,7 @@
 #endif
 
 #define BLOCK_SIZE 512
-using namespace sycl;
-class blur{
+class blur_sycl{
     private:
         const accessor<unsigned char, 1, access_mode::read> in;
         accessor<unsigned char, 1, access_mode::read_write> out;
@@ -20,9 +19,9 @@ class blur{
         const int h;
 
     public:
-        blur(
-            const accessor<unsigned char, 1, access_mode::read>& in,
-            accessor<unsigned char, 1, access_mode::read_write>& out,
+        blur_sycl(
+            const accessor<unsigned char, 1, access_mode::read> in,
+            accessor<unsigned char, 1, access_mode::read_write> out,
             const int &w,
             const int &h
         ):
@@ -33,8 +32,8 @@ class blur{
 
         void operator()(nd_item<1> it) const {
             const auto&  group = it.get_group();
-            int group_id = group.get_group_id();
-            int local_id = group.get_local_id(0);
+            int group_id = it.get_group(0);
+            int local_id = it.get_local_id(0);
 
             const int offset = group_id * BLOCK_SIZE + local_id;
             int x = offset % w;
@@ -75,11 +74,11 @@ void filter (unsigned char* input_image, unsigned char* output_image, int width,
       
         event e;
         e = Q.submit([&](handler &cgh){
-            const accessor<unsigned char, 1> in {in_buff, cgh, read_only};
-            accessor<unsigned char, 1> out {out_buff, cgh, read_write, no_init};
+            const accessor in {in_buff, cgh, read_only};
+            accessor out {out_buff, cgh, read_write, no_init};
             
 
-            cgh.parallel_for(nd_range<1>{threadInGrid, threadPerBlock}, blur(
+            cgh.parallel_for(nd_range<1>{threadInGrid, threadPerBlock}, blur_sycl(
                     in,
                     out, 
                     width,

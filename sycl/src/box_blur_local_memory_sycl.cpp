@@ -3,8 +3,8 @@
 #include "../include/lodepng.h"
 #include <functional>
 #include <cmath>
-#include <sycl/sycl.hpp>
 #include "../include/time_ms.hpp"
+#include <sycl_defines.hpp>
 
 #ifndef RADIUS
     #define RADIUS         3
@@ -12,9 +12,7 @@
 #define D              (RADIUS*2+1)
 #define S              (D*D)
 #define BLOCK_SIZE     512
-#define IMG_SIZE       512
 
-using namespace sycl;
 class blur{
     private:
         const accessor<unsigned char, 1, access_mode::read> in_r;
@@ -33,15 +31,15 @@ class blur{
 
     public:
         blur(
-            const accessor<unsigned char, 1, access_mode::read>& in_r,
-            const accessor<unsigned char, 1, access_mode::read>& in_g,
-            const accessor<unsigned char, 1, access_mode::read>& in_b,
+            const accessor<unsigned char, 1, access_mode::read> in_r,
+            const accessor<unsigned char, 1, access_mode::read> in_g,
+            const accessor<unsigned char, 1, access_mode::read> in_b,
 
 
-            accessor<unsigned char, 1, access_mode::read_write>& out,
-            local_accessor<unsigned char, 2> &smem_r,
-            local_accessor<unsigned char, 2> &smem_g,
-            local_accessor<unsigned char, 2> &smem_b,
+            accessor<unsigned char, 1, access_mode::read_write> out,
+            local_accessor<unsigned char, 2> smem_r,
+            local_accessor<unsigned char, 2> smem_g,
+            local_accessor<unsigned char, 2> smem_b,
             const int &w,
             const int &h
         ):
@@ -57,9 +55,9 @@ class blur{
 
         void operator()(nd_item<1> it) const {
             const auto&  group = it.get_group();
-            int group_id = group.get_group_id();
-            int local_id = group.get_local_id(0);
-            const int NUM_BLOCKS = w*h / IMG_SIZE;
+            int group_id = it.get_group(0);
+            int local_id = it.get_local_id(0);
+            const int NUM_BLOCKS = w*h / BLOCK_SIZE;
 
             const int gidx = group_id * BLOCK_SIZE + local_id;
             const int x = gidx % w;
@@ -121,12 +119,12 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
 
         e=Q.submit([&](handler &cgh){
             // input accessors(red, green, blue)
-            const accessor<unsigned char, 1> in_r {in_r_buff, cgh, read_only};
-            const accessor<unsigned char, 1> in_g {in_g_buff, cgh, read_only};
-            const accessor<unsigned char, 1> in_b {in_b_buff, cgh, read_only};
+            const accessor in_r {in_r_buff, cgh, read_only};
+            const accessor in_g {in_g_buff, cgh, read_only};
+            const accessor in_b {in_b_buff, cgh, read_only};
             
             // output accessor
-            accessor<unsigned char, 1> out {out_buff, cgh, read_write, no_init};
+            accessor out {out_buff, cgh, read_write, no_init};
             
             // local memory
             local_accessor<unsigned char, 2> smem_r {range<2>{D, BLOCK_SIZE}, cgh};

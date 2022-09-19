@@ -109,11 +109,14 @@ int main()
     // Take time in ms
     cudaEventElapsedTime(&time, start, stop);
     printf("%s, %f\n", "reduction_binary_cuda", time);
-    if (*h_output == SIZE_REDUCTION)
-        printf("pass\n");
-    else
-        printf("fail, result: %f\n", *h_output);
-
+    
+    
+    #ifdef DEBUG
+        if (*h_output == SIZE_REDUCTION)
+            printf("pass\n");
+        else
+            printf("fail, result: %f\n", *h_output);
+    #endif
     cudaDeviceSynchronize();
     
 

@@ -2,6 +2,8 @@
 #include <iostream>
 #include <stdio.h>
 #include "time_ms.hpp"
+#include <sycl_defines.hpp>
+
 
 #ifndef SIZE_REDUCTION
     #define SIZE_REDUCTION 30720
@@ -10,7 +12,6 @@
 #define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
 #define T float
 
-using namespace sycl;
 template<class X>
 class sub_group_reduce{
     private:
@@ -31,7 +32,7 @@ class sub_group_reduce{
             void operator()(nd_item<1> it) const{
                 const auto &group = it.get_group();
                 const auto &sub_group = it.get_sub_group();
-                int local_id = group.get_local_id(0);
+                int local_id = it.get_local_id(0);
                 int sub_group_id = sub_group.get_local_id();
 
                 local_data[local_id] = in[it.get_global_id(0)];
@@ -64,8 +65,8 @@ int main (){
         range<1> block{BLOCK_SIZE};
         event e;
         e = Q.submit([&](handler &cgh){
-            accessor<T, 1> in_acc{in_buff,cgh, read_only};
-            accessor<T, 1> out_acc{out_buff,cgh, read_write};
+            accessor in_acc{in_buff,cgh, read_only};
+            accessor out_acc{out_buff,cgh, read_write};
             
             local_accessor<T,1> local_data{BLOCK_SIZE, cgh};
 
@@ -75,15 +76,15 @@ int main (){
                 local_data
             ));
         });
-        time_ms(e, "reduction_sycl");
+        time_ms(e, "reduction_subgroup_sycl");
     }
 
-    // #ifdef DEBUG
+    #ifdef DEBUG
     if(*output==SIZE_REDUCTION)
         printf("Test PASS\n");
     else 
         printf("Test FAIL\n");
-    // #endif
+    #endif
 
 
 }

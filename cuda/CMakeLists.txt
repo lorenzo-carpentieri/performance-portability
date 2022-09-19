@@ -8,10 +8,11 @@ set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
 enable_language(CUDA)
 
-set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose reduction_tile32 reduction_binary)
+set(EXECUTABLES nbody matrix_mul_cublas matrix_mul_tiling matrix_transpose reduction_tile32 reduction_binary box_blur box_blur_local_memory sobel_filter)
+# set(EXECUTABLES matrix_mul_cublas matrix_mul_tiling  reduction_tile32 reduction_binary box_blur box_blur_local_memory sobel_filter)
 
 foreach(EXE IN LISTS EXECUTABLES)
-	add_executable(${EXE})
+	add_executable(${EXE}  ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 
 	target_include_directories(${EXE}
 	PUBLIC
@@ -21,6 +22,7 @@ foreach(EXE IN LISTS EXECUTABLES)
 	${CMAKE_CURRENT_SOURCE_DIR}/src/${EXE}_cuda.cu
 	# ${CMAKE_CURRENT_SOURCE_DIR}/src/sample_app.cpp
 	)
+
 endforeach()
 
 # Generate ptx 
@@ -36,17 +38,13 @@ endforeach()
 #     "--keep"
 # )
 
-add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_local_memory_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
-add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
-add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_cuda.cu ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
-
 # Set compile time variable
-# target_compile_definitions(nbody PRIVATE N=15104)
 add_compile_definitions(MATRIX_SIZE=2048 
 						SIZE_BODY=15104
-						SIZE_X= 8192 SIZE_Y= 8192 #matrix_transpose sizes
+						SIZE_X=8192 SIZE_Y=8192 #matrix_transpose sizes
 						SIZE_REDUCTION=61440
-						RADIUS=5)
+						RADIUS=3)
+
 
 
 

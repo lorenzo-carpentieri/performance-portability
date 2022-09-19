@@ -3,8 +3,9 @@
 #include <stdio.h>
 #include <iostream>
 #include <time_ms.hpp>
+#include <sycl_defines.hpp>
 
-using namespace sycl;
+
 #ifndef SIZE_REDUCTION
     #define SIZE_REDUCTION 30720
 #endif
@@ -34,7 +35,7 @@ int main(){
         auto sumValue = sumBuf.get_access<access_mode::read_write>(cgh);
 
         // Create temporary objects describing variables with reduction semantics
-        auto sumReduction = sycl::reduction(sumValue,sycl::plus<T>());
+        auto sumReduction = reduction(sumValue,sycl::plus<T>());
 
         // parallel_for performs two reduction operations
         // For each reduction variable, the implementation:
@@ -51,14 +52,14 @@ int main(){
         time_ms(e, "reducer_sycl");
 
     }  
-
-    if(sumResult==SIZE_REDUCTION){
-        std::cout << "pass" << std::endl;
-        return -1;
-    }
-    else
-        std::cout <<  "fail" << std::endl;
-
+    #ifdef DEBUG
+        if(sumResult==SIZE_REDUCTION){
+            std::cout << "pass" << std::endl;
+            return -1;
+        }
+        else
+            std::cout <<  "fail" << std::endl;
+    #endif
     return 0;
 
 }

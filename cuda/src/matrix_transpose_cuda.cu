@@ -99,7 +99,7 @@ int main()
 
     #ifdef DEBUG
     for(int i = 0; i < SIZE_X*SIZE_Y; i++)
-        std::cout << h_odata[i] << ", "; 
+         
     #endif
 
     // cleanup

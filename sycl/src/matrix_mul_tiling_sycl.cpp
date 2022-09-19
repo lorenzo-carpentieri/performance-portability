@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <sycl/sycl.hpp>
+#include <sycl_defines.hpp>
 #include "time_ms.hpp"
 
 #ifndef MATRIX_SIZE
@@ -9,7 +10,6 @@
 #define BLOCK_SIZE 32
 
 
-using namespace sycl;
 
 //only square matrix with MATRIX_SIZE multple of BLOCK_SIZE
 template <int DIM_MATRIX>
@@ -42,8 +42,8 @@ class square_matrix_mul_tiling{
             int col = static_cast<int>(it.get_global_id(1));
             int row = static_cast<int>(it.get_global_id(0));
 
-            int local_id_x = group.get_local_id(1);
-            int local_id_y = group.get_local_id(0);
+            int local_id_x = it.get_local_id(1);
+            int local_id_y = it.get_local_id(0);
             
             float tmp = 0;
             int idx;
@@ -109,9 +109,9 @@ int main()
 
         e = Q.submit([&](handler &cgh){
             // input and output amtrix accessor
-            const accessor<float, 1> a_matrix_acc {a_matrix_buff, cgh, read_only};
-            const accessor<float, 1> b_matrix_acc {b_matrix_buff, cgh, read_only};
-            accessor<float, 1> c_matrix_acc {c_matrix_buff, cgh, read_write};
+            const accessor a_matrix_acc {a_matrix_buff, cgh, read_only};
+            const accessor b_matrix_acc {b_matrix_buff, cgh, read_only};
+            accessor c_matrix_acc {c_matrix_buff, cgh, read_write};
 
             // local accessor for tile
             local_accessor<float, 2> tile_a{range<2>{BLOCK_SIZE, BLOCK_SIZE}, cgh};
@@ -128,11 +128,11 @@ int main()
         });
         time_ms(e, "matrix_mul_tiling_sycl");
     }
-    // #ifdef DEBUG
+    #ifdef DEBUG
     for(int i = 0; i < MATRIX_SIZE*MATRIX_SIZE; i++)
         if(c_matrix[i]!= MATRIX_SIZE)
             std::cout << "fail" << std::endl;
     std::cout<< "pass" <<  std::endl;
-    // #endif
+    #endif
     return 0;
 }

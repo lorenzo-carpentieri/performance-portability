@@ -3,8 +3,9 @@
 #include "../include/lodepng.h"
 #include <functional>
 #include <cmath>
-#include <sycl/sycl.hpp>
 #include "../include/time_ms.hpp"
+#include <sycl_defines.hpp>
+
 
 #define BLOCK_SIZE 512
 #ifndef RADIUS
@@ -12,21 +13,18 @@
 #endif
 using namespace sycl;
 
-class sobel_filter{
+class sobel_filter_sycl{
     private:
         const uint size;
-        const accessor<sycl::float3, 1, access_mode::read> in;
-        accessor<sycl::float3, 1, access_mode::read_write> out;
-        const accessor<float, 1, access_mode::read> kernel;
-
-
-       
+        const accessor<sycl::float3, 1, access_mode::read, target::device> in;
+        accessor<sycl::float3, 1, access_mode::read_write, target::device> out;
+        const accessor<float, 1, access_mode::read, target::device> kernel;       
 
     public:
-        sobel_filter(
-            const int &size,
-            const accessor<sycl::float3, 1, access_mode::read>& in,
-            accessor<sycl::float3, 1, access_mode::read_write>& out,
+        sobel_filter_sycl(
+            const uint &size,
+            const accessor<sycl::float3, 1, access_mode::read> in,
+            accessor<sycl::float3, 1, access_mode::read_write> out,
             const accessor<float, 1, access_mode::read> kernel
             
         ):
@@ -94,18 +92,18 @@ void filter (sycl::float3* input_image, sycl::float3* output_image, int width, i
         buffer<sycl::float3, 1> in_buff {input_image, width*height};
         buffer<sycl::float3, 1> out_buff {output_image, width*height};
         // input image is N x N
-        const uint size = width;
+        const uint &size = width;
         event e;
         range<2> range{size, size};
 
 
         e = Q.submit([&](handler &cgh){
-            const accessor<sycl::float3, 1> in {in_buff, cgh, read_only};
-            const accessor<float,1> kernel_acc {kernel_buff, cgh, read_only};
-            accessor<sycl::float3, 1> out {out_buff, cgh, read_write, no_init};
+            const accessor in {in_buff, cgh, read_only};
+            const accessor  kernel_acc {kernel_buff, cgh, read_only};
+            accessor out {out_buff, cgh, read_write, no_init};
 
 
-            cgh.parallel_for(range, sobel_filter(
+            cgh.parallel_for(range, sobel_filter_sycl(
                     size,
                     in,
                     out, 

@@ -2,13 +2,12 @@
 
 /* This example is a very small one designed to show how compact SYCL code
  * can be. That said, it includes no error checking and is rather terse. */
-#include <sycl/sycl.hpp>
-
+#include <sycl_defines.hpp>
 #include <array>
 #include <iostream>
 
-constexpr sycl::access::mode sycl_read = sycl::access::mode::read;
-constexpr sycl::access::mode sycl_write = sycl::access::mode::write;
+constexpr access::mode sycl_read = access::mode::read;
+constexpr access::mode sycl_write = access::mode::write;
 
 /* This is the class used to name the kernel for the runtime.
  * This must be done when the kernel is expressed as a lambda. */
@@ -18,17 +17,16 @@ class SimpleVadd;
 template <typename T, size_t N>
 void simple_vadd(const std::array<T, N>& VA, const std::array<T, N>& VB,
                  std::array<T, N>& VC) {
-  sycl::queue deviceQueue;
-  sycl::range<1> numOfItems{N};
-  sycl::buffer<T, 1> bufferA(VA.data(), numOfItems);
-  sycl::buffer<T, 1> bufferB(VB.data(), numOfItems);
-  sycl::buffer<T, 1> bufferC(VC.data(), numOfItems);
-  deviceQueue.submit([&](sycl::handler& cgh) {
+  queue deviceQueue;
+  range<1> numOfItems{N};
+  buffer<T, 1> bufferA(VA.data(), numOfItems);
+  buffer<T, 1> bufferB(VB.data(), numOfItems);
+  buffer<T, 1> bufferC(VC.data(), numOfItems);
+  deviceQueue.submit([&](handler& cgh) {
     auto accessorA = bufferA.template get_access<sycl_read>(cgh);
     auto accessorB = bufferB.template get_access<sycl_read>(cgh);
     auto accessorC = bufferC.template get_access<sycl_write>(cgh);
-
-    auto kern = [=](sycl::id<1> wiID) {
+    auto kern = [=](id<1> wiID) {
       accessorC[wiID] = accessorA[wiID] + accessorB[wiID];
     };
     cgh.parallel_for<class SimpleVadd<T>>(numOfItems, kern);

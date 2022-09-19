@@ -3,8 +3,9 @@
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
-#include <sycl/sycl.hpp>
 #include "time_ms.hpp"
+#include <sycl_defines.hpp>
+
 
 #ifndef SIZE_BODY
     #define SIZE_BODY 30208
@@ -39,7 +40,7 @@ sycl::float3 bodyBodyInteraction(sycl::float4 bi, sycl::float4 bj, sycl::float3 
 }
 
 template<int TILE_SIZE>
-sycl::float3 tile_calculation(sycl::float4 myPosition, sycl::float3 accel, sycl::local_accessor<sycl::float4, 1> sh_position)
+sycl::float3 tile_calculation(sycl::float4 myPosition, sycl::float3 accel, local_accessor<sycl::float4, 1> sh_position)
 {
 
     for (int i = 0; i < TILE_SIZE; i++) {
@@ -53,19 +54,19 @@ sycl::float3 tile_calculation(sycl::float4 myPosition, sycl::float3 accel, sycl:
 template<int TILE_SIZE, int TILES>
 class calculate_forces{
     private:
-        const sycl::accessor<sycl::float4, 1, sycl::access_mode::read, sycl::target::device> in_pos;
-        const sycl::accessor<sycl::float4, 1, sycl::access_mode::read, sycl::target::device> in_vel;
-        sycl::accessor<sycl::float4, 1, sycl::access_mode::read_write, sycl::target::device> out_pos;
-        sycl::accessor<sycl::float4, 1, sycl::access_mode::read_write, sycl::target::device> out_vel;
-        sycl::local_accessor<sycl::float4, 1> sh_position;
+        const accessor<sycl::float4, 1, access_mode::read, target::device> in_pos;
+        const accessor<sycl::float4, 1, access_mode::read, target::device> in_vel;
+        accessor<sycl::float4, 1, access_mode::read_write, target::device> out_pos;
+        accessor<sycl::float4, 1, access_mode::read_write, target::device> out_vel;
+        local_accessor<sycl::float4, 1> sh_position;
     
     public:
         calculate_forces(
-            const sycl::accessor<sycl::float4, 1, sycl::access_mode::read, sycl::target::device> in_pos,
-            const sycl::accessor<sycl::float4, 1,sycl::access_mode::read, sycl::target::device> in_vel,
-            sycl::accessor<sycl::float4, 1, sycl::access_mode::read_write, sycl::target::device> out_pos,
-            sycl::accessor<sycl::float4, 1, sycl::access_mode::read_write, sycl::target::device> out_vel,
-            sycl::local_accessor<sycl::float4, 1> sh_position
+            const accessor<sycl::float4, 1, access_mode::read, target::device> in_pos,
+            const accessor<sycl::float4, 1,access_mode::read, target::device> in_vel,
+            accessor<sycl::float4, 1, access_mode::read_write, target::device> out_pos,
+            accessor<sycl::float4, 1, access_mode::read_write, target::device> out_vel,
+            local_accessor<sycl::float4, 1> sh_position
         )
         :
             in_pos(in_pos),
@@ -77,7 +78,7 @@ class calculate_forces{
         void operator()(sycl::nd_item<1> it) const{
             const auto &group = it.get_group();
             int gtid = it.get_global_id().get(0);
-            int local_id = group.get_local_id().get(0);
+            int local_id = it.get_local_id().get(0);
 
             sycl::float4 myPosition;
             sycl::float3 acc = {0.0f, 0.0f, 0.0f};
@@ -152,11 +153,11 @@ int main() {
     
         e = Q.submit([&](sycl::handler &cgh) {
             // accessor
-            const sycl::accessor in_pos{pos_buff, cgh, sycl::read_only};
-            const sycl::accessor in_vel{vel_buff, cgh, sycl::read_only};
-            sycl::accessor out_pos{out_pos_buff, cgh, sycl::read_write};
-            sycl::accessor out_vel{out_vel_buff, cgh, sycl::read_write};
-            sycl::local_accessor<sycl::float4,1> sh_position{sycl::range<1>{BLOCK_SIZE},cgh};
+            const accessor in_pos{pos_buff, cgh, sycl::read_only};
+            const accessor in_vel{vel_buff, cgh, sycl::read_only};
+            accessor out_pos{out_pos_buff, cgh, sycl::read_write};
+            accessor out_vel{out_vel_buff, cgh, sycl::read_write};
+            local_accessor<sycl::float4,1> sh_position{sycl::range<1>{BLOCK_SIZE},cgh};
 
             cgh.parallel_for(sycl::nd_range<1>(grid, block), calculate_forces<BLOCK_SIZE, NUM_TILES>(
                 in_pos,

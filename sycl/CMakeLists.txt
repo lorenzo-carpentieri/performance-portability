@@ -1,13 +1,18 @@
 
 cmake_minimum_required(VERSION 3.22)
 project(Tesi_sycl)
-set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
+# set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sycl)
 # list exe
-set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling reduction_subgroup reduction_binary class_reducer)
+set(EXECUTABLES  nbody vector_add matrix_transpose matrix_mul_tiling class_reducer reduction_subgroup reduction_binary  box_blur box_blur_local_memory sobel_filter)
+#class_reducer    (Controllare se è supportata da dpcpp)
+# set(EXECUTABLES  vector_add  matrix_mul_tiling class_reducer reduction_subgroup reduction_binary box_blur box_blur_local_memory sobel_filter)
 
+# controllare nbody
 foreach(EXE IN LISTS EXECUTABLES)
-	add_executable(${EXE} ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
+	add_executable(${EXE} ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/sycl_defines.hpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+
+
 	target_include_directories(${EXE}
 	PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -17,53 +22,33 @@ foreach(EXE IN LISTS EXECUTABLES)
 	# ${CMAKE_CURRENT_SOURCE_DIR}/src/sample_app.cpp
 	)
 
-	add_compile_definitions(${EXE}
-	CPU_DEVICE=${CPU_DEVICE}
-	GPU_DEVICE=${GPU_DEVICE}
-	HOST_DEVICE=${HOST_DEVICE}
-	DEVICE_VALUE=${device_value}
-	)
-
-	add_compile_definitions(${EXE}
-		CPU_DEVICE=${CPU_DEVICE}
-		GPU_DEVICE=${GPU_DEVICE}
-		HOST_DEVICE=${HOST_DEVICE}
-		DEVICE_VALUE=${device_value}
-	)
+	# add_compile_definitions(${EXE}
+	# CPU_DEVICE=${CPU_DEVICE}
+	# GPU_DEVICE=${GPU_DEVICE}
+	# HOST_DEVICE=${HOST_DEVICE}
+	# DEVICE_VALUE=${device_value}
+	# )
 		
-	if(SYCL_BACKEND STREQUAL hipSYCL)
+	if(SYCL_BACKEND STREQUAL "hipSYCL")
 		find_package(hipSYCL REQUIRED)
-		add_sycl_to_target(TARGET ${EXE})
+		add_definitions(-DHIPSYCL)
 		add_sycl_to_target(TARGET ${EXE})
 	endif()
+  	if(SYCL_BACKEND STREQUAL "dpcpp")
+  		add_definitions (-DDPCPP)
+  	endif()
 
 endforeach()
 
-add_executable(box_blur ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
-add_executable(box_blur_local_memory ${CMAKE_CURRENT_SOURCE_DIR}/src/box_blur_local_memory_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
-add_executable(sobel_filter ${CMAKE_CURRENT_SOURCE_DIR}/src/sobel_filter_sycl.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp)
 
 # Set compile time variable
 # target_compile_definitions(nbody PRIVATE SIZE_BODY=15104)
-add_compile_definitions(MATRIX_SIZE=2048 
+add_compile_definitions(MATRIX_SIZE=2048
 						SIZE_BODY=15104 
-						SIZE_X= 8192 SIZE_Y= 8192 #matrix_transpose sizes
+						SIZE_X=8192 SIZE_Y=8192 #matrix_transpose sizes
 						SIZE_REDUCTION=61440
-						RADIUS=5)
-
-if(SYCL_BACKEND STREQUAL hipSYCL)
-		find_package(hipSYCL REQUIRED)
-		add_sycl_to_target(TARGET box_blur)
-endif()
-if(SYCL_BACKEND STREQUAL hipSYCL)
-		find_package(hipSYCL REQUIRED)
-		add_sycl_to_target(TARGET box_blur_local_memory)
-endif()
-if(SYCL_BACKEND STREQUAL hipSYCL)
-		find_package(hipSYCL REQUIRED)
-		add_sycl_to_target(TARGET sobel_filter)
-endif()
-
+						RADIUS=3
+						)
 option(SYCL_BACKEND "Enable selected SYCL backend" "")
 option(SYCL_DEVICE "Select target SYCL device" GPU)
 

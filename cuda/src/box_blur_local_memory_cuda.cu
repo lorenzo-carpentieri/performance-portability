@@ -65,16 +65,15 @@
 // }
 
 #ifndef RADIUS
-    #define RADIUS 5
+    #define RADIUS 3
 #endif
 #define D              (RADIUS*2+1)
 #define S              (D*D)
 #define BLOCK_SIZE     512
-#define IMG_SIZE       512
 
 // kernel with just one dimension
 __global__ void monodimensional_blur(const unsigned char *in_r, const unsigned char *in_g, const unsigned char *in_b, unsigned char *out, const unsigned int w, const unsigned int h){
-    const int NUM_BLOCKS = w*h / IMG_SIZE;
+    const int NUM_BLOCKS = w*h / BLOCK_SIZE;
     const int gidx = blockIdx.x * blockDim.x + threadIdx.x;
     const int x = gidx % w;
     const int y = (gidx-x)/w;

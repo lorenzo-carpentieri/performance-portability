@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include "../include/lodepng.h"
+#include <cuda_runtime.h>
 #include <functional>
 #include <cmath>
 
@@ -19,8 +20,8 @@ void sobel_filter(float3* in, float3* out, int* size, float* kernel) {
     const int y = threadIdx.y;
     const int gidx	= blockIdx.x * blockDim.x + x;
 	const int gidy	= blockIdx.y * blockDim.y + y;
-  
-    
+
+
     float3 Gx = float3{0, 0, 0};
     float3 Gy = float3{0, 0, 0};
     // constant-size loops in [0,1,2]
@@ -55,16 +56,16 @@ void sobel_filter(float3* in, float3* out, int* size, float* kernel) {
             Gy.z= Gy.z + conv_y * sample.z;
         }
     }
-          
+
             // taking root of sums of squares of Gx and Gy
             float3 color{0,0,0};
             color.x = hypotf(Gx.x, Gy.x);
             color.y = hypotf(Gx.y, Gy.y);
             color.z = hypotf(Gx.z, Gy.z);
-            
+
             float3 minval = float3{0.0, 0.0, 0.0};
             float3 maxval = float3{1.0, 1.0, 1.0};
-           
+
             out[gidx+gidy*(*size)].x = clamp(color.x, minval.x, maxval.x);
             out[gidx+gidy*(*size)].y = clamp(color.y, minval.x, maxval.x);
             out[gidx+gidy*(*size)].z = clamp(color.z, minval.x, maxval.x);            
@@ -75,7 +76,7 @@ void filter (float3* input_image, float3* output_image, const int size) {
     float time = 0;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-    
+
     float3* dev_input;
     float3* dev_output;
     float *dev_kernel;
@@ -93,13 +94,13 @@ void filter (float3* input_image, float3* output_image, const int size) {
 
     cudaMalloc( (void**) &dev_output, size*size*sizeof(float3));
 
-  
+
     dim3 blockDims(32,32);
     dim3 gridDims(size/32,size/32);
     // Take start time
     cudaEventRecord(start);
     sobel_filter<<<gridDims, blockDims>>>(dev_input, dev_output, dev_size, dev_kernel); 
-    
+
  
     cudaEventRecord(stop);
    // Wait stop event
@@ -148,18 +149,18 @@ int main(int argc, char** argv) {
            where++;
        }
     }
-    
+
     unsigned char* input_r = new unsigned char[width*height];
     unsigned char* input_g = new unsigned char[width*height];
     unsigned char* input_b = new unsigned char[width*height];
 
     float3* input_rgb = (float3*) malloc(sizeof(float3) * width*height);
-    
+
 
     for(int i = 0; i < width * height; i++)
         input_rgb[i] = {input_image[i*3]/255.f, input_image[i*3+1]/255.f, input_image[i*3+2]/255.f};
 
-   
+
     // Run the filter on it
     filter(input_rgb, output_rgb, width);
 
@@ -171,7 +172,7 @@ int main(int argc, char** argv) {
     }
 
 
- 
+
 
     // Prepare data for output
     // Add alpha channel in out image
@@ -182,7 +183,7 @@ int main(int argc, char** argv) {
             out_image.push_back(255);
         }
     }
-    
+
     // Output the data
     error = lodepng::encode(output_file, out_image, width, height);
 

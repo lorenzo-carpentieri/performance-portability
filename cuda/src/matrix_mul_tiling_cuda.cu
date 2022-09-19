@@ -73,10 +73,10 @@ int main () {
 
 	// Initialization
     for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
-        A_h[i] = i+1;
+        A_h[i] = 1;
     
     for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
-        B_h[i] = i+1;
+        B_h[i] = 1;
     
     for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
         C_h[i] = 0.0f;
@@ -108,7 +108,10 @@ int main () {
     
     #ifdef DEBUG
     for(int i = 0; i < MATRIX_SIZE*MATRIX_SIZE; i++){
-        std::cout << C_h[i] << ", ";
+        if(C_h[i]!=MATRIX_SIZE){
+            std::cout<< "fail" << std::endl;
+            return -1;
+        }
     }
     #endif
     

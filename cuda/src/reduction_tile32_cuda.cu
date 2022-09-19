@@ -112,12 +112,12 @@ int main()
     cudaMemcpy(h_output, d_output, sizeof(T), cudaMemcpyDeviceToHost);
 
 
-    // #ifdef DEBUG
+    #ifdef DEBUG
     if (*h_output == SIZE_REDUCTION)
         printf("pass\n");
     else
         printf("fail, result: %f\n", *h_output);
-    // #endif
+    #endif
 
     cudaDeviceSynchronize();
     

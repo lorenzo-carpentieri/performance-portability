@@ -1,13 +1,19 @@
 #include <stdio.h>
 #include <iostream>
-#include <sycl/sycl.hpp>
+
+#include <sycl_defines.hpp>
+
+
 #include "time_ms.hpp"
+
 // kernels transpose/copy a tile of TILE_DIM x TILE_DIM elements
 // using a TILE_DIM x BLOCK_ROWS thread block, so that each thread
 // transposes TILE_DIM/BLOCK_ROWS elements. TILE_DIM must be an
 // integral multiple of BLOCK_ROWS
+
 #define TILE_DIM 32
 #define BLOCK_ROWS 8
+
 #ifndef SIZE_X
     #define SIZE_X 2048
 #endif
@@ -15,22 +21,21 @@
     #define SIZE_Y 2048
 #endif
 
-using namespace sycl;
 
 // width, height matrix dimensions
 template <int DIM_X, int DIM_Y, int TILE_SIZE>
 class transposeCoalesced{
     private:
-        const accessor<float, 1, sycl::access_mode::read, sycl::target::device> in_matrix;
-        accessor<float, 1, sycl::access_mode::read_write, sycl::target::device> out_matrix;
-        sycl::local_accessor<float, 2> tile;
+        const accessor<float, 1, access_mode::read, target::device> in_matrix;
+        accessor<float, 1, access_mode::read_write, target::device> out_matrix;
+        local_accessor<float, 2> tile;
    
 
     public:
         transposeCoalesced(
-                const accessor<float, 1, sycl::access_mode::read, sycl::target::device> in_matrix,
-                accessor<float, 1, sycl::access_mode::read_write, sycl::target::device> out_matrix,
-                sycl::local_accessor<float, 2> tile
+                const accessor<float, 1, access_mode::read, target::device> in_matrix,
+                accessor<float, 1, access_mode::read_write, target::device> out_matrix,
+                local_accessor<float, 2> tile
         )
         :
         in_matrix(in_matrix),
@@ -42,8 +47,8 @@ class transposeCoalesced{
             int local_id_x=it.get_local_id(1);
             int local_id_y=it.get_local_id(0);
 
-            int block_x = group.get_group_id(1);
-            int block_y = group.get_group_id(0);
+            int block_x = it.get_group(1);
+            int block_y = it.get_group(0);
 
             int xIndex = block_x * TILE_SIZE +local_id_x;
             int yIndex = block_y * TILE_SIZE + local_id_y;
@@ -97,9 +102,8 @@ int main()
         buffer<float, 1> out_matrix_buff {out_matrix, SIZE_X*SIZE_Y};
         e = Q.submit([&](handler &cgh){
             // input and output amtrix accessor
-            const accessor<float, 1> in_matrix_acc {in_matrix_buff, cgh, read_only};
-            accessor<float, 1> out_matrix_acc {out_matrix_buff, cgh, read_write};
-
+            const accessor in_matrix_acc {in_matrix_buff, cgh, read_only};
+            accessor out_matrix_acc {out_matrix_buff, cgh, read_write};
             // local memory with TILE_DIM+1 to avoid bank conflicts
             local_accessor<float,2> tile {range<2>{TILE_DIM, TILE_DIM+1}, cgh};
             

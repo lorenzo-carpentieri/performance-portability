@@ -1,13 +1,13 @@
 /*
     Baseline
 */
-#include <sycl/sycl.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include "time_ms.hpp"
+#include <sycl_defines.hpp>
 
 
-using namespace sycl;
+
 #define T float
 
 #define BLOCK_SIZE 512
@@ -40,15 +40,15 @@ class binary_reduction{
             const auto &group = it.get_group();
             int grid_size = N_BLOCKS * BLOCK_SIZE;
             T my_sum = 0;
+           
+            int idx = it.get_local_id(0);
 
-            unsigned int idx = group.get_local_id(0);
-
-            // In this case we also halve the number of blocks
-            // threads in block0 sum data in block_0 and block_1
-            // threads in block_1 sum data in block_2 and block_3
-            // ...
-            // starting index 
-            unsigned int i = group.get_group_id(0) * BLOCK_SIZE * 2 + idx;
+            // // In this case we also halve the number of blocks
+            // // threads in block0 sum data in block_0 and block_1
+            // // threads in block_1 sum data in block_2 and block_3
+            // // ...
+            // // starting index 
+            unsigned int i = it.get_group(0) * BLOCK_SIZE * 2 + idx;
             grid_size = grid_size << 1;
             while (i < SIZE_REDUCTION) {
                 my_sum += input[i];
@@ -58,11 +58,11 @@ class binary_reduction{
 
                 i += grid_size;
             }
-        
-            // each thread puts its local sum into shared memory
+    
+            // // each thread puts its local sum into shared memory
             local_data[idx] = my_sum;
             group_barrier(group);
-           
+        
             //TODO: 32 dipende dall work_group sostituire facendo la chiamata per capire la sub_group supportat
             for (unsigned int stride = BLOCK_SIZE / 2; stride > 32; stride >>= 1) {
                 if (idx < stride) // Only the first half of the threads do the computation
@@ -117,13 +117,13 @@ int main()
         event e;
         e = Q.submit([&](handler &cgh){
                 
-                accessor<T,1> in_acc {in_buff, cgh, read_only}; 
-                accessor<T,1> out_acc {out_buff, cgh, read_write}; 
+                accessor in_acc {in_buff, cgh, read_only}; 
+                accessor out_acc {out_buff, cgh, read_write}; 
                 // shared memory
-                local_accessor<T, 1> local_acc{range<1>{BLOCK_SIZE}, cgh};
+                local_accessor<T, 1> local_acc{BLOCK_SIZE, cgh};
 
                 cgh.parallel_for(
-                    nd_range<1>{SIZE_REDUCTION, BLOCK_SIZE},
+                    nd_range<1>{range<1>{SIZE_REDUCTION}, range<1>{BLOCK_SIZE}},
                     binary_reduction(
                         in_acc,
                         out_acc,
@@ -137,12 +137,12 @@ int main()
     }
 
     
-    // #ifdef DEBUG
+    #ifdef DEBUG
     if (*h_output == SIZE_REDUCTION)
         printf("pass\n");
     else
         printf("fail, result: %f\n", *h_output);
-    // #endif
+    #endif
 
-    return 0;
+    // return 0;
 }

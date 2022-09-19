@@ -214,9 +214,9 @@ int main() {
     #ifdef DEBUG
     // print results
     for(int i = 0; i < SIZE_BODY; i++){
-        printf("body: %d, new_pos_x: %.2f, new_pos_y: %.2f, new_pos_z: %.2f\n", i, new_pos[i].x, new_pos[i].y, new_pos[i].z);
-        printf("body: %d, new_vel_x: %.2f, new_vel_y: %.2f, new_vel_z: %.2f\n", i, new_vel[i].x, new_vel[i].y, new_vel[i].z);
-        printf("\n");
+        // printf("body: %d, new_pos_x: %.2f, new_pos_y: %.2f, new_pos_z: %.2f\n", i, new_pos[i].x, new_pos[i].y, new_pos[i].z);
+        // printf("body: %d, new_vel_x: %.2f, new_vel_y: %.2f, new_vel_z: %.2f\n", i, new_vel[i].x, new_vel[i].y, new_vel[i].z);
+        // printf("\n");
     }
     #endif
 
