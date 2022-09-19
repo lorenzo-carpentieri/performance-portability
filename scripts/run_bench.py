@@ -1,28 +1,31 @@
 import os
 
-
 N_RUN = 5
 
 def run_bench(apps, image_apps, is_cuda): 
     bench = "sycl" if is_cuda == 0 else "cuda"
     for name in apps:
-        os.chdir('/root/tesi/performance-portability/'+bench+'/build/'+bench+'/')
+        #move in build/cuda|sycl directory
+        cd_command = 'cd '+ '../'+bench+'/build/'+bench+'/ && ' + './'+ name
         # run all code in apps N_RUN times
         for i in range(N_RUN):
+            #executio command
             if name in image_apps:
-                os.system('./'+ name +' /root/tesi/performance-portability/img/Lenna512.png'+' /root/tesi/performance-portability/img/Lenna512_output.png'+' >> /root/tesi/performance-portability/results/'+bench+'_times.csv')
+                exe_command= ' ../../../img/Lenna512.png ../../../img/Lenna512_output.png >> ../../../results/'+bench+'_times.csv'
             else:
-                os.system('./'+ name +' >> /root/tesi/performance-portability/results/'+bench+'_times.csv')
-    
-        os.system('python -c \'print "\\n"\' >> /root/tesi/performance-portability/results/'+bench+'_times.csv')
+                exe_command= ' >> ../../../results/' + bench+'_times.csv'
+            
+            os.system(cd_command + exe_command)
+        
+        os.system('python -c \'print "\\n"\' >> ../results/'+bench+'_times.csv')
 
-# list cuda application
+# list cuda applications
 cuda_apps = ["box_blur", "box_blur_local_memory", 
             "matrix_mul_cublas", "matrix_mul_tiling",
             "matrix_transpose", "nbody", 
             "reduction_binary", "reduction_tile32", 
             "sobel_filter"]
-
+#list sycl applications
 sycl_apps = ["box_blur", "box_blur_local_memory", 
             "matrix_mul_tiling",
             "matrix_transpose", "nbody", 
@@ -31,9 +34,9 @@ sycl_apps = ["box_blur", "box_blur_local_memory",
 
 image_apps = ["box_blur", "box_blur_local_memory", "sobel_filter"]
 
-os.system('rm -f /root/tesi/performance-portability/results/cuda_times.csv')
-os.system('rm -f /root/tesi/performance-portability/results/sycl_times.csv')
-
+#remove old files
+os.system('rm -f ../results/cuda_times.csv')
+os.system('rm -f ../results/sycl_times.csv')
 
 is_cuda = 1
 run_bench(cuda_apps,image_apps, is_cuda)
