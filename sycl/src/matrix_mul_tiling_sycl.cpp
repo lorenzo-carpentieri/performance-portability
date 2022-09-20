@@ -80,7 +80,7 @@ int main()
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
     // execution configuration parameters
  
-    event e;
+   
     
     // size of memory required to store the matrix
     const int mem_size = sizeof(float) * MATRIX_SIZE*MATRIX_SIZE;
@@ -100,6 +100,7 @@ int main()
     queue Q{gpu_selector(), property::queue::enable_profiling()};
 
     {
+        event e;
         range<2> grid {MATRIX_SIZE, MATRIX_SIZE}; 
         range<2> block{BLOCK_SIZE, BLOCK_SIZE};
         buffer<float, 1> a_matrix_buff {a_matrix, MATRIX_SIZE*MATRIX_SIZE};

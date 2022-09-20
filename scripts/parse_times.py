@@ -27,7 +27,7 @@ def compute_mean(times, apps):
             dev = stat.stdev(data)
             print(""+ apps[app_id])
             print("geometric mean, "+ str(round(gm, 3)))
-            print("aritmetic mean, "+ str(round(m, 3)))
+            print("arithmetic mean, "+ str(round(m, 3)))
             print("standar deviation, "+ str(round(dev,3))+ "\n")
             data=[]
             app_id += 1
@@ -57,4 +57,3 @@ print("\n"+ "CUDA"+ "\n")
 compute_mean(times_cuda, cuda_apps)
 print("\n"+ "SYCL"+ "\n")
 compute_mean(times_sycl, sycl_apps)
-

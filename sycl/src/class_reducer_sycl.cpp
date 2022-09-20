@@ -20,10 +20,10 @@ int main(){
 
     queue q{gpu_selector(), property::queue::enable_profiling()};
     
-    event e;
+    
     {
         // Buffers init
-       
+        event e;
         buffer<T, 1> inBuff {h_input, SIZE_REDUCTION};
         buffer<T, 1> sumBuf { &sumResult, 1 };
     
