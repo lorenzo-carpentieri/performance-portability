@@ -3,8 +3,13 @@
 #include "../include/lodepng.h"
 #include <functional>
 #include <cmath>
-#include "../include/time_ms.hpp"
+#include <time_ms.hpp>
 #include <sycl_defines.hpp>
+#include <utils.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
+
 
 #ifndef RADIUS
     #define RADIUS         3
@@ -13,7 +18,9 @@
 #define S              (D*D)
 #define BLOCK_SIZE     512
 
-class blur{
+namespace po = boost::program_options;
+
+class blur_local_mem{
     private:
         const accessor<unsigned char, 1, access_mode::read> in_r;
         const accessor<unsigned char, 1, access_mode::read> in_g;
@@ -30,7 +37,7 @@ class blur{
         const int h;
 
     public:
-        blur(
+        blur_local_mem(
             const accessor<unsigned char, 1, access_mode::read> in_r,
             const accessor<unsigned char, 1, access_mode::read> in_g,
             const accessor<unsigned char, 1, access_mode::read> in_b,
@@ -104,9 +111,24 @@ class blur{
         }
 };
 
-void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_b, unsigned char* output_image, const int width, const int height) {
+void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_b, unsigned char* output_image, const int width, const int height, std::string use_sycl) {
 
-    queue Q {gpu_selector(), property::queue::enable_profiling()};
+    auto dev_type = utils::select_dev(use_sycl);
+    auto platforms = sycl::platform::get_platforms();
+    
+    //Take all cpu or gpu platforms
+    auto gpu_platforms = [&platforms, &dev_type](){
+    std::vector<sycl::platform> gpu_platforms;
+    for(auto& p : platforms){
+      if(p.has(dev_type))
+        gpu_platforms.push_back(p);
+    }
+        return gpu_platforms;
+    }();
+  
+  auto device = gpu_platforms[0].get_devices()[0];
+
+    queue Q {device, property::queue::enable_profiling()};
     {
         range<1> threadPerBlock{BLOCK_SIZE};
         range<1> threadInGrid{BLOCK_SIZE*BLOCK_SIZE};
@@ -115,9 +137,20 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
         buffer<unsigned char, 1> in_b_buff {input_b, width*height};
 
         buffer<unsigned char, 1> out_buff {output_image, width*height*3};
+
+        #ifdef KERNEL_TIME
+            // for each buf in buffers create a dummy kernel
+            std::vector<buffer<unsigned char,1>> buffers;
+            buffers.push_back(in_r_buff);
+            buffers.push_back(in_g_buff);
+            buffers.push_back(in_b_buff);
+            buffers.push_back(out_buff);
+            for(buffer<unsigned char,1> buf:buffers)
+                utils::forceDataTransfer(Q, buf);
+        #endif
         event e;
 
-        e=Q.submit([&](handler &cgh){
+        e = Q.submit([&](handler &cgh){
             // input accessors(red, green, blue)
             const accessor in_r {in_r_buff, cgh, read_only};
             const accessor in_g {in_g_buff, cgh, read_only};
@@ -134,7 +167,7 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
 
             
 
-            cgh.parallel_for(nd_range<1>{threadInGrid, threadPerBlock}, blur(
+            cgh.parallel_for(nd_range<1>{threadInGrid, threadPerBlock}, blur_local_mem(
                     in_r,
                     in_g,
                     in_b,
@@ -154,10 +187,22 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
 }
 
 int main(int argc, char** argv) {
-    if(argc != 3) {
+    if(argc < 3) {
         std::cout << "Run with input and output image filenames." << std::endl;
         return 0;
     }
+
+
+    std::string use_sycl="";
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
 
     // Read the arguments
     const char* input_file = argv[1];
@@ -198,7 +243,7 @@ int main(int argc, char** argv) {
 
 
     // Run the filter on it
-    filter(input_r, input_g, input_b, output_image, width, height); 
+    filter(input_r, input_g, input_b, output_image, width, height, use_sycl); 
  
 
 

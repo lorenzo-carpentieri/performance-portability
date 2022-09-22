@@ -82,6 +82,10 @@ void filter (float3* input_image, float3* output_image, const int size) {
     float *dev_kernel;
     int *dev_size;
     const float kernel [] = {1, 0, -1, 2, 0, -2, 1, 0, -1};
+    
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
 
     cudaMalloc( (void**) &dev_input, size*size*sizeof(float3));
     cudaMalloc( (void**) &dev_kernel, sizeof(float)*9);
@@ -97,19 +101,27 @@ void filter (float3* input_image, float3* output_image, const int size) {
 
     dim3 blockDims(32,32);
     dim3 gridDims(size/32,size/32);
-    // Take start time
-    cudaEventRecord(start);
+    #ifdef KERNEL_TIME
+        // Take start time
+        cudaEventRecord(start);
+    #endif
     sobel_filter<<<gridDims, blockDims>>>(dev_input, dev_output, dev_size, dev_kernel); 
 
- 
-    cudaEventRecord(stop);
-   // Wait stop event
-    cudaEventSynchronize(stop);
+    #ifdef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+         cudaEventSynchronize(stop);
+    #endif
+    
+    cudaMemcpy(output_image, dev_output, size*size*sizeof(float3), cudaMemcpyDeviceToHost);
+    #ifndef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+         cudaEventSynchronize(stop);
+    #endif
     // Take time in ms
     cudaEventElapsedTime(&time, start, stop);
     printf("%s, %f\n", "sobel_filter_cuda", time);
-
-    cudaMemcpy(output_image, dev_output, size*size*sizeof(float3), cudaMemcpyDeviceToHost);
 
     cudaFree(dev_input);
     cudaFree(dev_output);

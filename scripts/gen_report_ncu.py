@@ -17,20 +17,24 @@ sycl_apps = ["box_blur", "box_blur_local_memory",
 
 image_apps = ["box_blur", "box_blur_local_memory", "sobel_filter"]
 
-def gen_reoports(bench, apps):
+def gen_reoports(bench, sycl_dev, apps):
     repo = 'cuda' if bench=='cuda' else 'sycl' 
+    sycl_dev_options = ('--sycl=gpu') if bench!='cuda' else ('')
     for app in apps:
-        command = 'ncu --set full -f -o ../reports/'+bench+'_report_'+app+ ' ../'+repo+'/build/'+repo+'/'+app
         if app in image_apps:
-            command+=' ../img/Lenna512.png  ../img/'+app+'_out.png'
-    
+            command = 'ncu  --set full -f -o ../reports/'+bench+'_report_'+app+ ' ../'+repo+'/build/'+repo+'/'+ app + ' ../img/Lenna512.png  ../img/'+app+'_out.png'+ ' ' + sycl_dev_options 
+        else:
+            command = 'ncu  --set full -f -o ../reports/'+bench+'_report_'+app+ ' ../'+repo+'/build/'+repo+'/'+app + ' '+ sycl_dev_options
+            
         os.system(command)
 
-if len(sys.argv) != 2:
-    print("Specify sycl impl as command line argument")
+if len(sys.argv) != 3:
+    print("Specify sycl impl and sycl device (cpu or gpu) as command line argument")
     exit(-1)
 
 sycl_impl = sys.argv[1]
+sycl_dev = sys.argv[2]
 
-gen_reoports('cuda', cuda_apps)
-gen_reoports(sycl_impl, sycl_apps)
+
+gen_reoports('cuda', '', cuda_apps)
+gen_reoports(sycl_impl, sycl_dev,sycl_apps)

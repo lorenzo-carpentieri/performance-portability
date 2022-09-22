@@ -67,13 +67,19 @@ int main()
     // allocate host memory
     float *h_idata = (float*) malloc(mem_size);
     float *h_odata = (float*) malloc(mem_size);
+    
+    // initalize host data
+    for(int i = 0; i < (SIZE_X*SIZE_Y); ++i)
+        h_idata[i] = (float) i;
+
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
     // allocate device memory
     float *d_idata, *d_odata;
     cudaMalloc( (void**) &d_idata, mem_size);
     cudaMalloc( (void**) &d_odata, mem_size);
-    // initalize host data
-    for(int i = 0; i < (SIZE_X*SIZE_Y); ++i)
-        h_idata[i] = (float) i;
+ 
     
     // copy host data to device
     cudaMemcpy(d_idata, h_idata, mem_size, cudaMemcpyHostToDevice );
@@ -82,19 +88,25 @@ int main()
     // NB: fine- and coarse-grained kernels are not full
     // transposes, so bypass check
     
-    // initialize events, EC parameters
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-
-    // take measurements for loop over kernel launches
-    cudaEventRecord(start, 0);
+    #ifdef KERNEL_TIME
+        // take measurements for loop over kernel launches
+        cudaEventRecord(start, 0);
+    #endif
     transposeCoalesced<<<grid, threads>>>(d_odata, d_idata,SIZE_X,SIZE_Y);
-   
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&time, start, stop);
+    #ifdef KERNEL_TIME
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+    #endif
+    
     cudaMemcpy(h_odata,d_odata, mem_size, cudaMemcpyDeviceToHost);
     
+    #ifndef KERNEL_TIME
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+    #endif
+
+    cudaEventElapsedTime(&time, start, stop);
+
     printf("%s, %f\n", "matrix_transpose_cuda", time);
 
     #ifdef DEBUG

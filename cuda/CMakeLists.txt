@@ -23,6 +23,10 @@ foreach(EXE IN LISTS EXECUTABLES)
 	# ${CMAKE_CURRENT_SOURCE_DIR}/src/sample_app.cpp
 	)
 
+	if(KERNEL_PROFILING)
+		add_definitions(-DKERNEL_TIME)
+	endif()
+
 endforeach()
 
 # Generate ptx 

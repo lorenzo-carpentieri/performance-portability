@@ -5,6 +5,14 @@
 #include <sycl_defines.hpp>
 #include <array>
 #include <iostream>
+#include <utils.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
+
+
+namespace po = boost::program_options;
+
 
 constexpr access::mode sycl_read = access::mode::read;
 constexpr access::mode sycl_write = access::mode::write;
@@ -16,8 +24,23 @@ class SimpleVadd;
 
 template <typename T, size_t N>
 void simple_vadd(const std::array<T, N>& VA, const std::array<T, N>& VB,
-                 std::array<T, N>& VC) {
-  queue deviceQueue;
+                 std::array<T, N>& VC, std::string use_sycl) {
+  auto dev_type = utils::select_dev(use_sycl);
+  auto platforms = sycl::platform::get_platforms();
+  
+  //Take all cpu or gpu platforms
+  auto gpu_platforms = [&platforms, &dev_type](){
+  std::vector<sycl::platform> gpu_platforms;
+  for(auto& p : platforms){
+    if(p.has(dev_type))
+      gpu_platforms.push_back(p);
+  }
+      return gpu_platforms;
+  }();
+  
+    auto device = gpu_platforms[0].get_devices()[0];
+
+  queue deviceQueue{device};
   range<1> numOfItems{N};
   buffer<T, 1> bufferA(VA.data(), numOfItems);
   buffer<T, 1> bufferB(VB.data(), numOfItems);
@@ -33,14 +56,24 @@ void simple_vadd(const std::array<T, N>& VA, const std::array<T, N>& VB,
   });
 }
 
-int main() {
+int main(int argc, char* argv[]) {
   const size_t array_size = 4;
   std::array<int, array_size> A = {{1, 2, 3, 4}},
                                            B = {{1, 2, 3, 4}}, C;
   std::array<float, array_size> D = {{1.f, 2.f, 3.f, 4.f}},
                                              E = {{1.f, 2.f, 3.f, 4.f}}, F;
-  simple_vadd(A, B, C);
-  simple_vadd(D, E, F);
+
+  std::string use_sycl="";
+  po::options_description desc("Allowed options");
+  desc.add_options()
+      ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
+  ;
+
+  po::variables_map vm;
+  po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::notify(vm); 
+  simple_vadd(A, B, C, use_sycl);
+  simple_vadd(D, E, F, use_sycl);
 
 
   for (unsigned int i = 0; i < array_size; i++) {

@@ -5,12 +5,19 @@
 #include <sycl_defines.hpp>
 
 
+#include <utils.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
+
 #ifndef SIZE_REDUCTION
     #define SIZE_REDUCTION 30720
 #endif
 #define BLOCK_SIZE 512
 #define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
 #define T float
+
+namespace po = boost::program_options;
 
 template<class X>
 class sub_group_reduce{
@@ -30,7 +37,6 @@ class sub_group_reduce{
             {}
 
             void operator()(nd_item<1> it) const{
-                const auto &group = it.get_group();
                 const auto &sub_group = it.get_sub_group();
                 int local_id = it.get_local_id(0);
                 int sub_group_id = sub_group.get_local_id();
@@ -47,7 +53,7 @@ class sub_group_reduce{
 
 };
 
-int main (){
+int main (int argc, char* argv[]){
     T* input = (T*)malloc(SIZE_REDUCTION * sizeof(T));
     T* output = (T*)malloc(sizeof(T));
 
@@ -57,13 +63,52 @@ int main (){
     for (int i = 0; i < SIZE_REDUCTION; i++)
         input[i] = 1.0f;
 
-    queue Q{gpu_selector(), property::queue::enable_profiling()};
+    std::string use_sycl="";
+   
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    auto dev_type = utils::select_dev(use_sycl);
+    auto platforms = sycl::platform::get_platforms();
+    
+      //Take all cpu or gpu platforms
+    auto gpu_platforms = [&platforms, &dev_type](){
+    std::vector<sycl::platform> gpu_platforms;
+      for(auto& p : platforms){
+        if(p.has(dev_type))
+          gpu_platforms.push_back(p);
+      }
+      return gpu_platforms;
+    }();
+  
+    auto device = gpu_platforms[0].get_devices()[0];
+
+  
+    queue Q{device, property::queue::enable_profiling()};
     {
+        
         buffer<T, 1> in_buff{input, SIZE_REDUCTION};
         buffer<T, 1> out_buff{output, 1};
+        #ifdef KERNEL_TIME
+            // for each buf in buffers create a dummy kernel
+            std::vector<buffer<T,1>> buffers;
+            buffers.push_back(in_buff);
+            buffers.push_back(out_buff);
+            for(buffer<T,1> buf:buffers)
+                utils::forceDataTransfer(Q, buf);
+        #endif
+
         range<1> grid{BLOCK_SIZE*N_BLOCKS};
         range<1> block{BLOCK_SIZE};
         event e;
+        
+
         e = Q.submit([&](handler &cgh){
             accessor in_acc{in_buff,cgh, read_only};
             accessor out_acc{out_buff,cgh, read_write};

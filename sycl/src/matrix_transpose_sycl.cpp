@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <iostream>
 
+#include <time_ms.hpp>
 #include <sycl_defines.hpp>
 
+#include <utils.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
 
-#include "time_ms.hpp"
 
+namespace po = boost::program_options;
 // kernels transpose/copy a tile of TILE_DIM x TILE_DIM elements
 // using a TILE_DIM x BLOCK_ROWS thread block, so that each thread
 // transposes TILE_DIM/BLOCK_ROWS elements. TILE_DIM must be an
@@ -24,7 +29,7 @@
 
 // width, height matrix dimensions
 template <int DIM_X, int DIM_Y, int TILE_SIZE>
-class transposeCoalesced{
+class matrix_transpose{
     private:
         const accessor<float, 1, access_mode::read, target::device> in_matrix;
         accessor<float, 1, access_mode::read_write, target::device> out_matrix;
@@ -32,7 +37,7 @@ class transposeCoalesced{
    
 
     public:
-        transposeCoalesced(
+        matrix_transpose(
                 const accessor<float, 1, access_mode::read, target::device> in_matrix,
                 accessor<float, 1, access_mode::read_write, target::device> out_matrix,
                 local_accessor<float, 2> tile
@@ -75,7 +80,7 @@ class transposeCoalesced{
 };
 
 
-int main()
+int main(int argc, char* argv[])
 {
     
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
@@ -93,13 +98,50 @@ int main()
     for(int i = 0; i < (SIZE_X*SIZE_Y); ++i)
         in_matrix[i] = (float) i;
 
-    queue Q {gpu_selector(), property::queue::enable_profiling()};
+    std::string use_sycl="";
+   
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    auto dev_type = utils::select_dev(use_sycl);
+    auto platforms = sycl::platform::get_platforms();
+    
+      //Take all cpu or gpu platforms
+    auto gpu_platforms = [&platforms, &dev_type](){
+    std::vector<sycl::platform> gpu_platforms;
+      for(auto& p : platforms){
+        if(p.has(dev_type))
+          gpu_platforms.push_back(p);
+      }
+      return gpu_platforms;
+    }();
+  
+    auto device = gpu_platforms[0].get_devices()[0];
+
+
+    queue Q{device, property::queue::enable_profiling()};
 
     {
+        event e;
         range<2> grid {BLOCK_ROWS * (SIZE_X / TILE_DIM), TILE_DIM * (SIZE_X / TILE_DIM)}; 
         range<2> block{BLOCK_ROWS, TILE_DIM};
         buffer<float, 1> in_matrix_buff {in_matrix, SIZE_X*SIZE_Y};
         buffer<float, 1> out_matrix_buff {out_matrix, SIZE_X*SIZE_Y};
+
+        #ifdef KERNEL_TIME
+            // for each buf in buffers create a dummy kernel
+            std::vector<buffer<float,1>> buffers;
+            buffers.push_back(in_matrix_buff);
+            buffers.push_back(out_matrix_buff);
+            for(buffer<float,1> buf:buffers)
+                utils::forceDataTransfer(Q, buf);
+        #endif
         e = Q.submit([&](handler &cgh){
             // input and output amtrix accessor
             const accessor in_matrix_acc {in_matrix_buff, cgh, read_only};
@@ -107,7 +149,7 @@ int main()
             // local memory with TILE_DIM+1 to avoid bank conflicts
             local_accessor<float,2> tile {range<2>{TILE_DIM, TILE_DIM+1}, cgh};
             
-            cgh.parallel_for(nd_range<2>{grid, block}, transposeCoalesced<SIZE_X, SIZE_Y, TILE_DIM>(
+            cgh.parallel_for(nd_range<2>{grid, block}, matrix_transpose<SIZE_X, SIZE_Y, TILE_DIM>(
                 in_matrix_acc,
                 out_matrix_acc,
                 tile

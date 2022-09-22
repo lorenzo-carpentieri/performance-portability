@@ -45,6 +45,10 @@ void filter (unsigned char* input_image, unsigned char* output_image, int width,
 
     unsigned char* dev_input;
     unsigned char* dev_output;
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
+
     cudaMalloc( (void**) &dev_input, width*height*3*sizeof(unsigned char));
     cudaMemcpy( dev_input, input_image, width*height*3*sizeof(unsigned char), cudaMemcpyHostToDevice );
 
@@ -53,20 +57,29 @@ void filter (unsigned char* input_image, unsigned char* output_image, int width,
   
     dim3 blockDims(512,1,1);
     dim3 gridDims((unsigned int) ceil((double)(width*height/blockDims.x)), 1, 1 );
+    #ifdef KERNEL_TIME
     // Take start time
     cudaEventRecord(start);
+    #endif
     blur<<<gridDims, blockDims>>>(dev_input, dev_output, width, height); 
 
+    #ifdef KERNEL_TIME
     cudaEventRecord(stop);
-    // Wait stop event
     cudaEventSynchronize(stop);
-
+    #endif
+   
+    cudaMemcpy(output_image, dev_output, width*height*3*sizeof(unsigned char), cudaMemcpyDeviceToHost );
+    
+    #ifndef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
     // Take time in ms
     cudaEventElapsedTime(&time, start, stop);
     
     printf("%s, %f\n", "box_blur_cuda", time);
 
-    cudaMemcpy(output_image, dev_output, width*height*3*sizeof(unsigned char), cudaMemcpyDeviceToHost );
 
     cudaFree(dev_input);
     cudaFree(dev_output);

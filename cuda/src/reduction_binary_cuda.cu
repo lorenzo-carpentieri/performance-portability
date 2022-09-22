@@ -86,6 +86,9 @@ int main()
     for (int i = 0; i < SIZE_REDUCTION; i++)
         h_input[i] = 1.0f;
 
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
     // Allocating memory for device
     T* d_input, *d_output;
     cudaMalloc((void **) &d_input, SIZE_REDUCTION * sizeof(T));
@@ -94,21 +97,30 @@ int main()
     // Copying input data from host to device, executing kernel and copying result from device to host
 
     *h_output = 0;
-    cudaEventRecord(start);
 
     cudaMemcpy(d_input, h_input, SIZE_REDUCTION * sizeof(T), cudaMemcpyHostToDevice);
     cudaMemcpy(d_output, h_output, sizeof(T), cudaMemcpyHostToDevice);
-        
+    #ifdef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
     reduction<<<N_BLOCKS, BLOCK_SIZE>>> (d_input, d_output);
-  
+    #ifdef KERNEL_TIME 
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+
+    #endif
 
     cudaMemcpy(h_output, d_output, sizeof(T), cudaMemcpyDeviceToHost);
-     cudaEventRecord(stop);
-    // Wait stop event
-    cudaEventSynchronize(stop);
+   
+    #ifndef KERNEL_TIME 
+        cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+    #endif
+
     // Take time in ms
     cudaEventElapsedTime(&time, start, stop);
     printf("%s, %f\n", "reduction_binary_cuda", time);
+
     
     
     #ifdef DEBUG

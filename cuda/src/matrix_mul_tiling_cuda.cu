@@ -62,14 +62,7 @@ int main () {
     float *A_h = static_cast<float *>(malloc(sizeof(float) * MATRIX_SIZE * MATRIX_SIZE));
     float *B_h = static_cast<float *>(malloc(sizeof(float) * MATRIX_SIZE * MATRIX_SIZE));
     float *C_h = static_cast<float *>(malloc(sizeof(float) * MATRIX_SIZE * MATRIX_SIZE));
-	
-    // Device data
-    float *A_d, *B_d, *C_d; // device data
-    cudaMalloc((void **) &A_d, MATRIX_SIZE * MATRIX_SIZE * sizeof(float));
-    cudaMalloc((void **) &B_d, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE);
-    cudaMalloc((void **) &C_d, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE);
-
-    // Data initialization
+     // Data initialization
 
 	// Initialization
     for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
@@ -80,6 +73,18 @@ int main () {
     
     for(int i {0}; i < MATRIX_SIZE * MATRIX_SIZE; i++)
         C_h[i] = 0.0f;
+
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
+
+    // Device data
+    float *A_d, *B_d, *C_d; // device data
+    cudaMalloc((void **) &A_d, MATRIX_SIZE * MATRIX_SIZE * sizeof(float));
+    cudaMalloc((void **) &B_d, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE);
+    cudaMalloc((void **) &C_d, sizeof(float) * MATRIX_SIZE * MATRIX_SIZE);
+
+   
     
     dim3 grid(MATRIX_SIZE/BLOCK_SIZE, MATRIX_SIZE/BLOCK_SIZE); 
     dim3 threads(BLOCK_SIZE, BLOCK_SIZE);
@@ -90,22 +95,33 @@ int main () {
     cudaMemcpy(B_d, B_h, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyHostToDevice);
 
     cudaMemset(C_d, 0, MATRIX_SIZE * MATRIX_SIZE * sizeof(float));
+    #ifdef KERNEL_TIME
     // Take start time
     cudaEventRecord(start);
+    #endif
     gpu_square_matrix_mult<<<grid, threads>>>(A_d, B_d,C_d,MATRIX_SIZE);
-
-    cudaEventRecord(stop);
-    // Wait stop event
-    cudaEventSynchronize(stop);
+    
+    #ifdef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
 
     // Take time in ms
+   
+    // Data from device to host
+    cudaMemcpy(C_h, C_d, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
+   
+    cudaDeviceSynchronize();
+    #ifndef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
+
     cudaEventElapsedTime(&time, start, stop);
     
     printf("%s, %f\n", "matrix_mul_tiling_cuda", time);
-    // Data from device to host
-    cudaMemcpy(C_h, C_d, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaDeviceSynchronize();
-    
     #ifdef DEBUG
     for(int i = 0; i < MATRIX_SIZE*MATRIX_SIZE; i++){
         if(C_h[i]!=MATRIX_SIZE){

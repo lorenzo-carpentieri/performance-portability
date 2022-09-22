@@ -87,6 +87,9 @@ int main()
     for (int i = 0; i < SIZE_REDUCTION; i++)
         h_input[i] = 1.0f;
 
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
     // Allocating memory for device
     T* d_input, * d_output;
     cudaMalloc((void**)&d_input, SIZE_REDUCTION * sizeof(T));
@@ -98,19 +101,26 @@ int main()
     
     cudaMemcpy(d_input, h_input, SIZE_REDUCTION * sizeof(T), cudaMemcpyHostToDevice);
     cudaMemcpy(d_output, h_output, sizeof(T), cudaMemcpyHostToDevice);
-
-    cudaEventRecord(start);
+    #ifdef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
     reduction << <N_BLOCKS, BLOCK_SIZE >> > (d_input, d_output);
+    #ifdef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
     
-    cudaEventRecord(stop);
-    // Wait stop event
-    cudaEventSynchronize(stop);
+    cudaMemcpy(h_output, d_output, sizeof(T), cudaMemcpyDeviceToHost);
+    #ifndef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
+
     // Take time in ms
     cudaEventElapsedTime(&time, start, stop);
     printf("%s, %f\n", "reduction_tile32_cuda", time);
-
-    cudaMemcpy(h_output, d_output, sizeof(T), cudaMemcpyDeviceToHost);
-
 
     #ifdef DEBUG
     if (*h_output == SIZE_REDUCTION)

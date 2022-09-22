@@ -179,7 +179,9 @@ int main() {
     
     
     int nBlocks = (SIZE_BODY % BLOCK_SIZE!=0) + SIZE_BODY / BLOCK_SIZE;
-
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
     // Start simulation
     cudaMalloc(&d_old_pos, bytes);
     cudaMalloc(&d_old_vel, bytes);
@@ -190,26 +192,34 @@ int main() {
     // Hosto to device
     cudaMemcpy(d_old_pos, pos, bytes, cudaMemcpyHostToDevice);
     cudaMemcpy(d_old_vel, vel, bytes, cudaMemcpyHostToDevice);
-
-    // Take start time
-    cudaEventRecord(start);
+    #ifdef KERNEL_TIME
+        // Take start time
+        cudaEventRecord(start);
+    #endif
     // nbody calculation
     calculate_forces<<<nBlocks, BLOCK_SIZE>>>(d_old_pos, d_old_vel, d_new_pos, d_new_vel); // compute interbody forces
-    
-    cudaEventRecord(stop);
-    // Wait stop event
-    cudaEventSynchronize(stop);
-
-    // Take time in ms
-    cudaEventElapsedTime(&time, start, stop);
-    
-    printf("%s, %f\n", "nbody_cuda", time);
-
+    #ifdef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
+ 
 
         
     // Device to host
     cudaMemcpy(new_pos, d_new_pos, bytes, cudaMemcpyDeviceToHost);
     cudaMemcpy(new_vel, d_new_vel, bytes, cudaMemcpyDeviceToHost);
+    #ifndef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);  
+    #endif
+    
+    // Take time in ms
+    cudaEventElapsedTime(&time, start, stop);
+    
+    printf("%s, %f\n", "nbody_cuda", time);
+
         
     #ifdef DEBUG
     // print results

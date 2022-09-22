@@ -5,12 +5,18 @@
 #include <cmath>
 #include <sycl_defines.hpp>
 #include "../include/time_ms.hpp"
+#include <utils.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
 
 #ifndef RADIUS
     #define RADIUS 3
 #endif
 
 #define BLOCK_SIZE 512
+
+namespace po = boost::program_options;
 class blur_sycl{
     private:
         const accessor<unsigned char, 1, access_mode::read> in;
@@ -31,7 +37,6 @@ class blur_sycl{
         h(h){}
 
         void operator()(nd_item<1> it) const {
-            const auto&  group = it.get_group();
             int group_id = it.get_group(0);
             int local_id = it.get_local_id(0);
 
@@ -63,15 +68,36 @@ class blur_sycl{
         }
 };
 
-void filter (unsigned char* input_image, unsigned char* output_image, int width, int height) {
+void filter (unsigned char* input_image, unsigned char* output_image, int width, int height, std::string use_sycl) {
+    auto dev_type = utils::select_dev(use_sycl);
+    auto platforms = sycl::platform::get_platforms();
+    
+    //Take all cpu or gpu platforms
+    auto gpu_platforms = [&platforms, &dev_type](){
+    std::vector<sycl::platform> gpu_platforms;
+    for(auto& p : platforms){
+      if(p.has(dev_type))
+        gpu_platforms.push_back(p);
+    }
+        return gpu_platforms;
+    }();
+  
+    auto device = gpu_platforms[0].get_devices()[0];
 
-    queue Q {gpu_selector(), property::queue::enable_profiling()};
+    queue Q {device, property::queue::enable_profiling()};
     {
         range<1> threadPerBlock{BLOCK_SIZE};
         range<1> threadInGrid{BLOCK_SIZE*BLOCK_SIZE};
         buffer<unsigned char, 1> in_buff {input_image, width*height*3};
         buffer<unsigned char, 1> out_buff {output_image, width*height*3};
-      
+        #ifdef KERNEL_TIME
+            // for each buf in buffers create a dummy kernel
+            std::vector<buffer<unsigned char,1>> buffers;
+            buffers.push_back(in_buff);
+            buffers.push_back(out_buff);
+            for(buffer<unsigned char,1> buf:buffers)
+                utils::forceDataTransfer(Q, buf);
+        #endif
         event e;
         e = Q.submit([&](handler &cgh){
             const accessor in {in_buff, cgh, read_only};
@@ -93,10 +119,20 @@ void filter (unsigned char* input_image, unsigned char* output_image, int width,
 }
 
 int main(int argc, char** argv) {
-    if(argc != 3) {
+    if(argc < 3) {
         std::cout << "Run with input and output image filenames." << std::endl;
         return 0;
     }
+    
+    std::string use_sycl="";
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
 
     // Read the arguments
     const char* input_file = argv[1];
@@ -137,7 +173,7 @@ int main(int argc, char** argv) {
 
 
     // Run the filter on it
-    filter(input_image, output_image, width, height); 
+    filter(input_image, output_image, width, height, use_sycl); 
 
 
 

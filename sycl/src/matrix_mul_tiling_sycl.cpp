@@ -4,6 +4,14 @@
 #include <sycl_defines.hpp>
 #include "time_ms.hpp"
 
+#include <utils.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
+
+
+namespace po = boost::program_options;
+
 #ifndef MATRIX_SIZE
     #define MATRIX_SIZE 1024
 #endif
@@ -74,7 +82,7 @@ class square_matrix_mul_tiling{
 };
 
 
-int main()
+int main(int argc, char* argv[])
 {
     
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
@@ -97,7 +105,34 @@ int main()
         c_matrix[i] = 0.0;
     }
 
-    queue Q{gpu_selector(), property::queue::enable_profiling()};
+      std::string use_sycl="";
+   
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    auto dev_type = utils::select_dev(use_sycl);
+    auto platforms = sycl::platform::get_platforms();
+    
+      //Take all cpu or gpu platforms
+    auto gpu_platforms = [&platforms, &dev_type](){
+    std::vector<sycl::platform> gpu_platforms;
+      for(auto& p : platforms){
+        if(p.has(dev_type))
+          gpu_platforms.push_back(p);
+      }
+      return gpu_platforms;
+    }();
+  
+    auto device = gpu_platforms[0].get_devices()[0];
+
+
+    queue Q{device, property::queue::enable_profiling()};
 
     {
         event e;
@@ -106,7 +141,16 @@ int main()
         buffer<float, 1> a_matrix_buff {a_matrix, MATRIX_SIZE*MATRIX_SIZE};
         buffer<float, 1> b_matrix_buff {b_matrix, MATRIX_SIZE*MATRIX_SIZE};
         buffer<float, 1> c_matrix_buff {c_matrix, MATRIX_SIZE*MATRIX_SIZE};
-
+        
+        #ifdef KERNEL_TIME
+            // for each buf in buffers create a dummy kernel
+            std::vector<buffer<float,1>> buffers;
+            buffers.push_back(a_matrix_buff);
+            buffers.push_back(b_matrix_buff);
+            buffers.push_back(c_matrix_buff);
+            for(buffer<float,1> buf:buffers)
+                utils::forceDataTransfer(Q, buf);
+        #endif
 
         e = Q.submit([&](handler &cgh){
             // input and output amtrix accessor

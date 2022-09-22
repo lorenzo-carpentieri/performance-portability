@@ -6,6 +6,13 @@
 #include "time_ms.hpp"
 #include <sycl_defines.hpp>
 
+#include <utils.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/variables_map.hpp>
+
+
+namespace po = boost::program_options;
 
 #ifndef SIZE_BODY
     #define SIZE_BODY 30208
@@ -111,7 +118,7 @@ class calculate_forces{
         }
 };
 
-int main() {    
+int main(int argc, char* argv[]) {    
     
     int bytes = SIZE_BODY * sizeof(sycl::float4);
 
@@ -136,8 +143,33 @@ int main() {
         vel[i][2]= 2.0f * (rand() / (float)RAND_MAX) - 1.0f;
         vel[i][3]= 0;
     }
+      std::string use_sycl="";
+   
+    po::options_description desc("Allowed options");
+    desc.add_options()
+        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
+    ;
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);    
+
+    auto dev_type = utils::select_dev(use_sycl);
+    auto platforms = sycl::platform::get_platforms();
+    
+      //Take all cpu or gpu platforms
+    auto gpu_platforms = [&platforms, &dev_type](){
+    std::vector<sycl::platform> gpu_platforms;
+      for(auto& p : platforms){
+        if(p.has(dev_type))
+          gpu_platforms.push_back(p);
+      }
+      return gpu_platforms;
+    }();
   
-    sycl::queue Q {sycl::gpu_selector(), sycl::property::queue::enable_profiling()};
+    auto device = gpu_platforms[0].get_devices()[0];
+
+    sycl::queue Q {device, sycl::property::queue::enable_profiling()};
     
     {
         // buffer
@@ -146,7 +178,17 @@ int main() {
         sycl::buffer<sycl::float4, 1> out_vel_buff {new_vel, SIZE_BODY};
         sycl::buffer<sycl::float4, 1> out_pos_buff{ new_pos, SIZE_BODY};
         
-            
+        #ifdef KERNEL_TIME
+            // for each buf in buffers create a dummy kernel
+            std::vector<buffer<sycl::float4,1>> buffers;
+            buffers.push_back(pos_buff);
+            buffers.push_back(vel_buff);
+            buffers.push_back(out_vel_buff);
+            buffers.push_back(out_pos_buff);
+
+            for(buffer<sycl::float4,1> buf:buffers)
+                utils::forceDataTransfer(Q, buf);
+        #endif
         sycl::range<1> block{BLOCK_SIZE};
         sycl::range<1> grid{SIZE_BODY}; 
         sycl::event e;

@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.22)
 project(Tesi_sycl)
-# set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -lboost_program_options")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sycl)
 # list exe
 set(EXECUTABLES  nbody vector_add matrix_transpose matrix_mul_tiling class_reducer reduction_subgroup reduction_binary  box_blur box_blur_local_memory sobel_filter)
@@ -33,9 +33,17 @@ foreach(EXE IN LISTS EXECUTABLES)
 		find_package(hipSYCL REQUIRED)
 		add_definitions(-DHIPSYCL)
 		add_sycl_to_target(TARGET ${EXE})
+		if(KERNEL_PROFILING)
+			add_definitions(-DKERNEL_TIME)
+		endif()
+
 	endif()
   	if(SYCL_BACKEND STREQUAL "dpcpp")
-  		add_definitions (-DDPCPP)
+  		add_definitions (-DDPCPP -DKERNEL_TIME)
+  	endif()
+	
+	if(KERNEL_PROFILING)
+	  add_definitions(-DKERNEL_TIME)
   	endif()
 
 endforeach()
@@ -46,7 +54,7 @@ endforeach()
 add_compile_definitions(MATRIX_SIZE=2048
 						SIZE_BODY=15104 
 						SIZE_X=8192 SIZE_Y=8192 #matrix_transpose sizes
-						SIZE_REDUCTION=61440
+						SIZE_REDUCTION=245760
 						RADIUS=3
 						)
 option(SYCL_BACKEND "Enable selected SYCL backend" "")

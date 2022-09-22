@@ -54,7 +54,9 @@ int main () {
         fprintf (stderr, "CUBLAS initialization failed\n");
         return EXIT_FAILURE;
     }
-
+    #ifndef KERNEL_TIME
+        cudaEventRecord(start);
+    #endif
     // auto start = steady_clock::now();
     // Data movement 
     cudaMemcpy(A_d, A_h, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyHostToDevice);
@@ -66,8 +68,10 @@ int main () {
     // Matrix mul
     const float alpha = 1, beta = 0;
     auto kernel_start = steady_clock::now();
-    // Take start time
-    cudaEventRecord(start);
+    #ifdef KERNEL_TIME
+        // Take start time
+        cudaEventRecord(start);
+    #endif
     stat = cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, MATRIX_SIZE, MATRIX_SIZE, MATRIX_SIZE, &alpha, B_d, MATRIX_SIZE, A_d, MATRIX_SIZE, &beta, C_d, MATRIX_SIZE);
     if (stat != CUBLAS_STATUS_SUCCESS) {
         printf ("Matrix product failed\n");
@@ -78,27 +82,34 @@ int main () {
 
         return EXIT_FAILURE;
     }
-    cudaDeviceSynchronize();
-    cudaEventRecord(stop);
-    // Wait stop event
-    cudaEventSynchronize(stop);
-
-    // Take time in ms
-    cudaEventElapsedTime(&time, start, stop);
+    cudaDeviceSynchronize();    
+    #ifdef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
     
-    printf("%s, %f\n", "matrix_mul_cublas_cuda", time);
     auto kernel_end = steady_clock::now();
     
     // Data from device to host
     cudaMemcpy(C_h, C_d, MATRIX_SIZE * MATRIX_SIZE * sizeof(float), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
 
+    #ifndef KERNEL_TIME
+        cudaEventRecord(stop);
+        // Wait stop event
+        cudaEventSynchronize(stop);
+    #endif
+
     // auto end = steady_clock::now();
 
 
     // cout << "matrix_mul_cublas, " << duration_cast<chrono::milliseconds>(end - start).count() << ", " << duration_cast<chrono::microseconds>(kernel_end - kernel_start).count() << "";
     // cout << "matrix_mul_cublas, " << duration_cast<chrono::milliseconds>(kernel_end - kernel_start).count() << std::endl;
-
+    // Take time in ms
+    cudaEventElapsedTime(&time, start, stop);
+    
+    printf("%s, %f\n", "matrix_mul_cublas_cuda", time);
     
     // Free device memory
     cudaFree(A_d);     
