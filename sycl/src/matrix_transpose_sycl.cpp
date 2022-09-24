@@ -86,7 +86,6 @@ int main(int argc, char* argv[])
     // Computation is divided into tiles of TILE_DIM X TILE_DIME (where TILE_DIM is multiple of BLOCK_ROWS). 
     // execution configuration parameters
     
-    event e;
     
     // size of memory required to store the matrix
     const int mem_size = sizeof(float) * SIZE_X*SIZE_Y;

@@ -22,7 +22,7 @@
 
 namespace po = boost::program_options;
 
-
+template<int SUB_GROUP_DIM>
 class binary_reduction{
     private:
         accessor<T,1, access_mode::read> input;
@@ -32,6 +32,7 @@ class binary_reduction{
 
 
     public:
+        binary_reduction(){};
         binary_reduction(
             accessor<T,1, access_mode::read> input,
             accessor<T,1, access_mode::read_write> output,
@@ -42,7 +43,7 @@ class binary_reduction{
         local_data(local_data)
         {}
 
-        void operator()(nd_item<1> it) const{
+        void operator()(nd_item<1> it) const {
             const auto &group = it.get_group();
             int grid_size = N_BLOCKS * BLOCK_SIZE;
             T my_sum = 0;
@@ -69,22 +70,25 @@ class binary_reduction{
             local_data[idx] = my_sum;
             group_barrier(group);
         
-            //TODO: 32 dipende dall work_group sostituire facendo la chiamata per capire la sub_group supportat
-            for (unsigned int stride = BLOCK_SIZE / 2; stride > 32; stride >>= 1) {
+            for (unsigned int stride = BLOCK_SIZE / 2; stride > SUB_GROUP_DIM; stride >>= 1) {
                 if (idx < stride) // Only the first half of the threads do the computation
                     local_data[idx] += local_data[idx + stride];
 
                 group_barrier(group); // Wait that all threads in the block compute the partial sum
             }
+           
+           
+            if(idx < SUB_GROUP_DIM){
+                if (BLOCK_SIZE >= SUB_GROUP_DIM*2  && SUB_GROUP_DIM * 2 >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM];
+                if (BLOCK_SIZE >= SUB_GROUP_DIM    && SUB_GROUP_DIM >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM/2];
+                if (BLOCK_SIZE >= SUB_GROUP_DIM/2  && SUB_GROUP_DIM / 2 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/4];
+                if (BLOCK_SIZE >= SUB_GROUP_DIM/4  && SUB_GROUP_DIM / 4 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/8];
+                if (BLOCK_SIZE >= SUB_GROUP_DIM/8  && SUB_GROUP_DIM / 8 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/16];
+                if (BLOCK_SIZE >= SUB_GROUP_DIM/16 && SUB_GROUP_DIM / 16 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/32];
+                if (BLOCK_SIZE >= SUB_GROUP_DIM/32 && SUB_GROUP_DIM / 32 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/64];
+                if (BLOCK_SIZE >= SUB_GROUP_DIM/64 && SUB_GROUP_DIM / 64 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/128];
 
-            // TODO: 32 non va bene per tutti 
-            if(idx < 32){
-                if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx + 32];
-                if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx + 16];
-                if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx + 8];
-                if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
-                if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
-                if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
+
             }
           
             atomic_ref<T, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(output[0]);
@@ -111,8 +115,7 @@ int main(int argc, char* argv[])
     std::string use_sycl="";
     po::options_description desc("Allowed options");
     desc.add_options()
-        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu")
-    ;
+        ("sycl",po::value(&use_sycl), "use SYCL implementation with cpu or gpu");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -148,6 +151,10 @@ int main(int argc, char* argv[])
             for(buffer<T,1> buf:buffers)
                 utils::forceDataTransfer(Q, buf);
         #endif
+
+        // Different devices can use different sub group size
+	    const auto subgroup_size = Q.get_device().get_info<sycl::info::device::sub_group_sizes>().at(0);
+
         // event
         event e;
         e = Q.submit([&](handler &cgh){
@@ -156,15 +163,58 @@ int main(int argc, char* argv[])
                 accessor out_acc {out_buff, cgh, read_write}; 
                 // shared memory
                 local_accessor<T, 1> local_acc{BLOCK_SIZE, cgh};
+                // luanch the kernel with the correct subgroup size
+                switch(subgroup_size){
+                    case 1: 
+                        cgh.parallel_for(
+                            nd_range<1>{range<1>{SIZE_REDUCTION}, range<1>{BLOCK_SIZE}},
+                            binary_reduction<1>(
+                                in_acc,
+                                out_acc,
+                                local_acc
+                        ));
+                        break;
+                    case 16:
+                        cgh.parallel_for(
+                            nd_range<1>{range<1>{SIZE_REDUCTION}, range<1>{BLOCK_SIZE}},
+                            binary_reduction<16>(
+                                in_acc,
+                                out_acc,
+                                local_acc
+                        ));
+                        break;
+                    case 32:
+                        cgh.parallel_for(
+                            nd_range<1>{range<1>{SIZE_REDUCTION}, range<1>{BLOCK_SIZE}},
+                            binary_reduction<32>(
+                                in_acc,
+                                out_acc,
+                                local_acc
+                        ));   
+                        break;
+                    case 64:
+                        cgh.parallel_for(
+                            nd_range<1>{range<1>{SIZE_REDUCTION}, range<1>{BLOCK_SIZE}},
+                            binary_reduction<64>(
+                                in_acc,
+                                out_acc,
+                                local_acc
+                        ));
+                        break;
+                    case 128:
+                        cgh.parallel_for(
+                            nd_range<1>{range<1>{SIZE_REDUCTION}, range<1>{BLOCK_SIZE}},
+                            binary_reduction<128>(
+                                in_acc,
+                                out_acc,
+                                local_acc
+                        ));
+                        break;
+                    default:
+                        throw std::runtime_error("Unsupported subgroup size");
+                }
 
-                cgh.parallel_for(
-                    nd_range<1>{range<1>{SIZE_REDUCTION}, range<1>{BLOCK_SIZE}},
-                    binary_reduction(
-                        in_acc,
-                        out_acc,
-                        local_acc
-                    )
-                );
+                
             }
         ); //end submit
         time_ms(e, "reduction_binary_sycl");

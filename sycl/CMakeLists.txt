@@ -33,11 +33,8 @@ foreach(EXE IN LISTS EXECUTABLES)
 		find_package(hipSYCL REQUIRED)
 		add_definitions(-DHIPSYCL)
 		add_sycl_to_target(TARGET ${EXE})
-		if(KERNEL_PROFILING)
-			add_definitions(-DKERNEL_TIME)
-		endif()
-
 	endif()
+
   	if(SYCL_BACKEND STREQUAL "dpcpp")
   		add_definitions (-DDPCPP -DKERNEL_TIME)
   	endif()
@@ -46,6 +43,10 @@ foreach(EXE IN LISTS EXECUTABLES)
 	  add_definitions(-DKERNEL_TIME)
   	endif()
 
+	if(DEBUG)
+	  add_definitions(-DDEBUG)
+  	endif()
+	
 endforeach()
 
 
@@ -54,7 +55,7 @@ endforeach()
 add_compile_definitions(MATRIX_SIZE=2048
 						SIZE_BODY=15104 
 						SIZE_X=8192 SIZE_Y=8192 #matrix_transpose sizes
-						SIZE_REDUCTION=245760
+						# SIZE_REDUCTION=245760
 						RADIUS=3
 						)
 option(SYCL_BACKEND "Enable selected SYCL backend" "")
