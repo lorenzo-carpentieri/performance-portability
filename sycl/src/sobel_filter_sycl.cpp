@@ -14,8 +14,8 @@
 namespace po = boost::program_options;
 
 #define BLOCK_SIZE 512
-#ifndef RADIUS
-    #define RADIUS 3
+#ifndef RADIUS_SOBEL
+    #define RADIUS_SOBEL 3
 #endif
 using namespace sycl;
 

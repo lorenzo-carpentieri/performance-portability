@@ -1,16 +1,15 @@
 
 cmake_minimum_required(VERSION 3.22)
 project(Tesi_sycl)
-set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra -lboost_program_options")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sycl)
 # list exe
-set(EXECUTABLES  nbody vector_add matrix_transpose matrix_mul_tiling class_reducer reduction_subgroup reduction_binary  box_blur box_blur_local_memory sobel_filter)
+# set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling class_reducer reduction_subgroup reduction_binary  box_blur box_blur_local_memory sobel_filter)
 #class_reducer    (Controllare se è supportata da dpcpp)
 # set(EXECUTABLES  vector_add  matrix_mul_tiling class_reducer reduction_subgroup reduction_binary box_blur box_blur_local_memory sobel_filter)
-
+ set(EXECUTABLES vector_add)
 # controllare nbody
 foreach(EXE IN LISTS EXECUTABLES)
-	add_executable(${EXE} ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/sycl_defines.hpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
+	add_executable(${EXE} ${CMAKE_CURRENT_SOURCE_DIR}/include/utils.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/sycl_defines.hpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
 
 
 	target_include_directories(${EXE}
@@ -36,7 +35,7 @@ foreach(EXE IN LISTS EXECUTABLES)
 	endif()
 
   	if(SYCL_BACKEND STREQUAL "dpcpp")
-  		add_definitions (-DDPCPP -DKERNEL_TIME)
+  		add_definitions (-DDPCPP)
   	endif()
 	
 	if(KERNEL_PROFILING)
@@ -52,11 +51,16 @@ endforeach()
 
 # Set compile time variable
 # target_compile_definitions(nbody PRIVATE SIZE_BODY=15104)
-add_compile_definitions(MATRIX_SIZE=2048
-						SIZE_BODY=15104 
-						SIZE_X=8192 SIZE_Y=8192 #matrix_transpose sizes
-						# SIZE_REDUCTION=245760
-						RADIUS=3
+add_compile_definitions(
+	MATRIX_SIZE=4096 
+	SIZE_BODY=81920
+	SIZE_X=16396 SIZE_Y=16396 #matrix_transpose sizes
+	SIZE_REDUCTION=245760
+    RADIUS_SOBEL=3
+	RADIUS=5
+
+
+
 						)
 option(SYCL_BACKEND "Enable selected SYCL backend" "")
 option(SYCL_DEVICE "Select target SYCL device" GPU)
