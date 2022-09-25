@@ -78,7 +78,7 @@ class sub_group_reduce{
                 }
                 atomic_ref<X, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(out[0]);
 
-                 if (sub_group_id == 0 && sub_group.get_group_id() < NUM_TILES_PER_BLOCK / 2)
+                 if (sub_group_id == 0 && (static_cast<int>(sub_group.get_group_id()) < NUM_TILES_PER_BLOCK / 2))
                     ao.fetch_add(local_data[j]);
                 // mySum = reduce_over_group(sub_group, local_data[local_id], std::plus<X>());
 
