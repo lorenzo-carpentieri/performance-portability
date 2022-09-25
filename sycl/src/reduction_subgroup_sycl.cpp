@@ -1,9 +1,7 @@
-#include <sycl/sycl.hpp>
 #include <iostream>
 #include <stdio.h>
 #include "time_ms.hpp"
 #include <sycl_defines.hpp>
-
 
 #include <utils.hpp>
 #include <boost/program_options/options_description.hpp>
@@ -15,6 +13,8 @@
 #endif
 #define BLOCK_SIZE 512
 #define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
+//TODO: add support for different subgroup size passing this element as template arguments
+#define NUM_TILES_PER_BLOCK (BLOCK_SIZE / 32)
 #define T float
 
 namespace po = boost::program_options;
@@ -41,14 +41,50 @@ class sub_group_reduce{
                 int local_id = it.get_local_id(0);
                 int sub_group_id = sub_group.get_local_id();
 
-                local_data[local_id] = in[it.get_global_id(0)];
-                
-                X mySum = 0;   
-                mySum = reduce_over_group(sub_group, local_data[local_id], std::plus<X>());
+                const auto &group = it.get_group();
 
+                int block_id = it.get_group(0);
+                int grid_size = N_BLOCKS * BLOCK_SIZE;
+
+                X my_sum = 0;
+
+                // In this case we also halve the number of blocks
+
+                unsigned int i = block_id * BLOCK_SIZE * 2 + local_id;
+                grid_size = grid_size << 1;
+                while (i < SIZE_REDUCTION) {
+                    my_sum += in[i];
+                    if ((i + BLOCK_SIZE) < SIZE_REDUCTION) {
+                        my_sum += in[i + BLOCK_SIZE];
+                    }
+                    i += grid_size;
+                }
+
+                // each thread puts its local sum into shared memory
+                local_data[local_id] = my_sum;
+                group_barrier(group);
+
+                // local_data[local_id] = in[it.get_global_id(0)];
+                
+                // X mySum = 0;   
+               
+                // TODO: chane 32 with SUB_GROUP_SIZE
+                int j = sub_group.get_group_id() * 32 * 2 + sub_group_id;
+
+                // We work on a warp (32-threads)
+                if (j < BLOCK_SIZE) {
+                    local_data[j] += local_data[j + 32];
+                    local_data[j] = reduce_over_group(sub_group, local_data[j], std::plus<X>());
+                }
                 atomic_ref<X, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(out[0]);
-                if(sub_group_id==0)
-                    ao.fetch_add(mySum);
+
+                 if (sub_group_id == 0 && sub_group.get_group_id() < NUM_TILES_PER_BLOCK / 2)
+                    ao.fetch_add(local_data[j]);
+                // mySum = reduce_over_group(sub_group, local_data[local_id], std::plus<X>());
+
+                // atomic_ref<X, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(out[0]);
+                // if(sub_group_id==0)
+                //     ao.fetch_add(mySum);
             }
 
 };

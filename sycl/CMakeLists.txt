@@ -3,10 +3,9 @@ cmake_minimum_required(VERSION 3.22)
 project(Tesi_sycl)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sycl)
 # list exe
-# set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling class_reducer reduction_subgroup reduction_binary  box_blur box_blur_local_memory sobel_filter)
+set(EXECUTABLES nbody vector_add matrix_transpose matrix_mul_tiling class_reducer reduction_subgroup reduction_binary  box_blur box_blur_local_memory sobel_filter)
 #class_reducer    (Controllare se è supportata da dpcpp)
 # set(EXECUTABLES  vector_add  matrix_mul_tiling class_reducer reduction_subgroup reduction_binary box_blur box_blur_local_memory sobel_filter)
- set(EXECUTABLES vector_add)
 # controllare nbody
 foreach(EXE IN LISTS EXECUTABLES)
 	add_executable(${EXE} ${CMAKE_CURRENT_SOURCE_DIR}/include/utils.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/time_ms.hpp ${CMAKE_CURRENT_SOURCE_DIR}/include/sycl_defines.hpp ${CMAKE_CURRENT_SOURCE_DIR}/src/lodepng.cpp)
@@ -58,8 +57,6 @@ add_compile_definitions(
 	SIZE_REDUCTION=245760
     RADIUS_SOBEL=3
 	RADIUS=5
-
-
 
 						)
 option(SYCL_BACKEND "Enable selected SYCL backend" "")
