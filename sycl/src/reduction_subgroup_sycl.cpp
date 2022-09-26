@@ -13,13 +13,11 @@
 #endif
 #define BLOCK_SIZE 512
 #define N_BLOCKS (SIZE_REDUCTION/BLOCK_SIZE)
-//TODO: add support for different subgroup size passing this element as template arguments
-#define NUM_TILES_PER_BLOCK (BLOCK_SIZE / 32)
 #define T float
 
 namespace po = boost::program_options;
 
-template<class X>
+template<class X, int SUB_GROUP_SIZE>
 class sub_group_reduce{
     private:
             accessor<X, 1, access_mode::read> in;
@@ -39,14 +37,14 @@ class sub_group_reduce{
             void operator()(nd_item<1> it) const{
                 const auto &sub_group = it.get_sub_group();
                 int local_id = it.get_local_id(0);
-                int sub_group_id = sub_group.get_local_id();
-
+                int sub_group_item_id = sub_group.get_local_id();
                 const auto &group = it.get_group();
 
+                
                 int block_id = it.get_group(0);
                 int grid_size = N_BLOCKS * BLOCK_SIZE;
 
-                X my_sum = 0;
+                X my_sum=0;
 
                 // In this case we also halve the number of blocks
 
@@ -57,34 +55,33 @@ class sub_group_reduce{
                     if ((i + BLOCK_SIZE) < SIZE_REDUCTION) {
                         my_sum += in[i + BLOCK_SIZE];
                     }
+                    
                     i += grid_size;
                 }
-
+                
+               
                 // each thread puts its local sum into shared memory
                 local_data[local_id] = my_sum;
                 group_barrier(group);
 
-                // local_data[local_id] = in[it.get_global_id(0)];
-                
-                // X mySum = 0;   
-               
-                // TODO: chane 32 with SUB_GROUP_SIZE
-                int j = sub_group.get_group_id() * 32 * 2 + sub_group_id;
+              
+                int j = sub_group.get_group_id() * SUB_GROUP_SIZE * 2 + sub_group_item_id;
 
                 // We work on a warp (32-threads)
                 if (j < BLOCK_SIZE) {
-                    local_data[j] += local_data[j + 32];
-                    local_data[j] = reduce_over_group(sub_group, local_data[j], std::plus<X>());
+                    my_sum += local_data[j + SUB_GROUP_SIZE];
+                    my_sum = reduce_over_group(sub_group, my_sum, std::plus<X>());
                 }
+
+                int sub_group_local_id = local_id / SUB_GROUP_SIZE;  
+
                 atomic_ref<X, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(out[0]);
 
-                 if (sub_group_id == 0 && (static_cast<int>(sub_group.get_group_id()) < NUM_TILES_PER_BLOCK / 2))
-                    ao.fetch_add(local_data[j]);
-                // mySum = reduce_over_group(sub_group, local_data[local_id], std::plus<X>());
+                constexpr int NUM_TILES_PER_BLOCK (BLOCK_SIZE / SUB_GROUP_SIZE);
 
-                // atomic_ref<X, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(out[0]);
-                // if(sub_group_id==0)
-                //     ao.fetch_add(mySum);
+                 if (sub_group_item_id == 0 && sub_group_local_id < NUM_TILES_PER_BLOCK / 2)
+                    ao.fetch_add(my_sum);
+
             }
 
 };
@@ -125,7 +122,7 @@ int main (int argc, char* argv[]){
   
     auto device = gpu_platforms[0].get_devices()[0];
 
-  
+
     queue Q{device, property::queue::enable_profiling()};
     {
         
@@ -144,27 +141,55 @@ int main (int argc, char* argv[]){
         range<1> block{BLOCK_SIZE};
         event e;
         
+	    const auto subgroup_size = Q.get_device().get_info<sycl::info::device::sub_group_sizes>().at(0);
+        
+        // if(BLOCK_SIZE/subgroup_size < max_subgroup_per_group)
+        //     throw std::runtime_error("Unsupported subgroup size");
 
         e = Q.submit([&](handler &cgh){
             accessor in_acc{in_buff,cgh, read_only};
             accessor out_acc{out_buff,cgh, read_write};
             
             local_accessor<T,1> local_data{BLOCK_SIZE, cgh};
+            switch(subgroup_size){
+                case 1: cgh.parallel_for(nd_range<1>{grid, block}, sub_group_reduce<T, 1>(
+                            in_acc,
+                            out_acc,
+                            local_data
+                        )); 
+                        break;
 
-            cgh.parallel_for(nd_range<1>{grid, block}, sub_group_reduce<T>(
-                in_acc,
-                out_acc,
-                local_data
-            ));
+                case 32: cgh.parallel_for(nd_range<1>{grid, block}, sub_group_reduce<T, 32>(
+                            in_acc,
+                            out_acc,
+                            local_data
+                        ));
+                        break;
+
+                case 64:  cgh.parallel_for(nd_range<1>{grid, block}, sub_group_reduce<T, 64>(
+                            in_acc,
+                            out_acc,
+                            local_data
+                        ));
+                        break;
+                case 128: cgh.parallel_for(nd_range<1>{grid, block}, sub_group_reduce<T, 128>(
+                            in_acc,
+                            out_acc,
+                            local_data
+                        ));
+                        break;
+                default:
+                        throw std::runtime_error("Unsupported subgroup size");
+            }
         });
         time_ms(e, "reduction_subgroup_sycl");
     }
 
     #ifdef DEBUG
     if(*output==SIZE_REDUCTION)
-        printf("Test PASS\n");
+        printf("test pass\n");
     else 
-        printf("Test FAIL\n");
+        printf("test fail, %f\n", output[0]);
     #endif
 
 
