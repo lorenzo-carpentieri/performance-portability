@@ -165,8 +165,6 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
             local_accessor<unsigned char, 2> smem_b {range<2>{D, BLOCK_SIZE}, cgh};
 
 
-            
-
             cgh.parallel_for(nd_range<1>{threadInGrid, threadPerBlock}, blur_local_mem(
                     in_r,
                     in_g,
@@ -239,13 +237,10 @@ int main(int argc, char** argv) {
         input_g[i] = input_image[i*3+1];
         input_b[i] = input_image[i*3+2];
     }
-    
 
 
     // Run the filter on it
     filter(input_r, input_g, input_b, output_image, width, height, use_sycl); 
- 
-
 
 
     // Prepare data for output
@@ -253,7 +248,6 @@ int main(int argc, char** argv) {
     std::vector<unsigned char> out_image;
     for(uint i = 0; i < width*height*3; i++) {
         out_image.push_back(output_image[i]);
-        // printf("id: %d, output_image_val: %d\n", i, output_image[i]);
         if((i+1) % 3 == 0) {
             out_image.push_back(255);
         }

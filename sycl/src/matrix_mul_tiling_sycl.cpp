@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <iostream>
-#include <sycl/sycl.hpp>
 #include <sycl_defines.hpp>
 #include "time_ms.hpp"
 

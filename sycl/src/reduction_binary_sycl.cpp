@@ -69,27 +69,66 @@ class binary_reduction{
             // // each thread puts its local sum into shared memory
             local_data[idx] = my_sum;
             group_barrier(group);
-        
+
             for (unsigned int stride = BLOCK_SIZE / 2; stride > SUB_GROUP_DIM; stride >>= 1) {
                 if (idx < stride) // Only the first half of the threads do the computation
                     local_data[idx] += local_data[idx + stride];
-
                 group_barrier(group); // Wait that all threads in the block compute the partial sum
             }
-           
-           
+
             if(idx < SUB_GROUP_DIM){
-                if (BLOCK_SIZE >= SUB_GROUP_DIM*2  && SUB_GROUP_DIM * 2 >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM];
-                if (BLOCK_SIZE >= SUB_GROUP_DIM    && SUB_GROUP_DIM >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM/2];
-                if (BLOCK_SIZE >= SUB_GROUP_DIM/2  && SUB_GROUP_DIM / 2 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/4];
-                if (BLOCK_SIZE >= SUB_GROUP_DIM/4  && SUB_GROUP_DIM / 4 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/8];
-                if (BLOCK_SIZE >= SUB_GROUP_DIM/8  && SUB_GROUP_DIM / 8 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/16];
-                if (BLOCK_SIZE >= SUB_GROUP_DIM/16 && SUB_GROUP_DIM / 16 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/32];
-                if (BLOCK_SIZE >= SUB_GROUP_DIM/32 && SUB_GROUP_DIM / 32 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/64];
-                if (BLOCK_SIZE >= SUB_GROUP_DIM/64 && SUB_GROUP_DIM / 64 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/128];
+                if(SUB_GROUP_DIM == 1){
+                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
+                }
+                else if(SUB_GROUP_DIM == 16){
+                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
+                } 
+                else if(SUB_GROUP_DIM == 32){
+                    if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
+                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
+                } 
+                else if(SUB_GROUP_DIM==64){
+                    if (BLOCK_SIZE >= 128) local_data[idx] += local_data[idx+ 64];
+                    if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
+                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
+                }   
 
+                else{
+                    if (BLOCK_SIZE >= 256) local_data[idx] += local_data[idx+ 128];
+                    if (BLOCK_SIZE >= 128) local_data[idx] += local_data[idx+ 64];
+                    if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
+                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
+                }           
+             }
+                
+        
 
-            }
+            // if(idx < SUB_GROUP_DIM){
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM*2  && SUB_GROUP_DIM * 2 >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM];
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM    && SUB_GROUP_DIM >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM/2];
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/2  && SUB_GROUP_DIM / 2 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/4];
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/4  && SUB_GROUP_DIM / 4 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/8];
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/8  && SUB_GROUP_DIM / 8 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/16];
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/16 && SUB_GROUP_DIM / 16 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/32];
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/32 && SUB_GROUP_DIM / 32 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/64];
+            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/64 && SUB_GROUP_DIM / 64 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/128];
+            // }
           
             atomic_ref<T, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(output[0]);
             if (idx == 0) {

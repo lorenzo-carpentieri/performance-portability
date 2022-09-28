@@ -1,10 +1,8 @@
 
-#include <sycl/sycl.hpp>
 #include <stdio.h>
 #include <iostream>
 #include <time_ms.hpp>
 #include <sycl_defines.hpp>
-
 #include <utils.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
@@ -38,7 +36,7 @@ int main(int argc, char* argv[]){
     auto dev_type = utils::select_dev(use_sycl);
     auto platforms = sycl::platform::get_platforms();
     
-      //Take all cpu or gpu platforms
+    //Take all cpu or gpu platforms
     auto gpu_platforms = [&platforms, &dev_type](){
     std::vector<sycl::platform> gpu_platforms;
       for(auto& p : platforms){
@@ -59,7 +57,7 @@ int main(int argc, char* argv[]){
         event e;
         buffer<T, 1> inBuff {h_input, SIZE_REDUCTION};
         buffer<T, 1> sumBuf { &sumResult, 1 };
-
+        
         #ifdef KERNEL_TIME
             // for each buf in buffers create a dummy kernel
             std::vector<buffer<T,1>> buffers;

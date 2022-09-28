@@ -63,8 +63,8 @@ class sobel_filter_sycl{
                     // sample color
                     sycl::float3 sample = in[xs*size+ys];
                     // convolution calculation
-                    int offset_x = x_shift + y_shift * RADIUS;
-                    int offset_y = y_shift + x_shift * RADIUS;
+                    int offset_x = x_shift + y_shift * RADIUS_SOBEL;
+                    int offset_y = y_shift + x_shift * RADIUS_SOBEL;
 
                     float conv_x = kernel[offset_x];
                     sycl::float3 conv4_x = sycl::float3(conv_x);
