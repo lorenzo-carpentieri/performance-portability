@@ -2,7 +2,6 @@
     Baseline
 */
 #include <stdio.h>
-#include <stdlib.h>
 #include "time_ms.hpp"
 #include <sycl_defines.hpp>
 #include <utils.hpp>
@@ -32,7 +31,7 @@ class binary_reduction{
 
 
     public:
-        binary_reduction(){};
+        
         binary_reduction(
             accessor<T,1, access_mode::read> input,
             accessor<T,1, access_mode::read_write> output,
@@ -45,17 +44,19 @@ class binary_reduction{
 
         void operator()(nd_item<1> it) const {
             const auto &group = it.get_group();
+            const auto &sub_group = it.get_sub_group();
+
             int grid_size = N_BLOCKS * BLOCK_SIZE;
             T my_sum = 0;
            
             unsigned int idx = it.get_local_id(0);
-
+            
             // // In this case we also halve the number of blocks
             // // threads in block0 sum data in block_0 and block_1
             // // threads in block_1 sum data in block_2 and block_3
             // // ...
             // // starting index 
-            unsigned int i = it.get_group(0) * BLOCK_SIZE * 2 + idx;
+            int i = it.get_group(0) * BLOCK_SIZE * 2 + idx;
             grid_size = grid_size << 1;
             while (i < SIZE_REDUCTION) {
                 my_sum += input[i];
@@ -82,54 +83,65 @@ class binary_reduction{
                 }
                 else if(SUB_GROUP_DIM == 16){
                     if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
                 } 
                 else if(SUB_GROUP_DIM == 32){
                     if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
                 } 
                 else if(SUB_GROUP_DIM==64){
                     if (BLOCK_SIZE >= 128) local_data[idx] += local_data[idx+ 64];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
                 }   
 
                 else{
                     if (BLOCK_SIZE >= 256) local_data[idx] += local_data[idx+ 128];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 128) local_data[idx] += local_data[idx+ 64];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
+                    group_barrier(sub_group);
                     if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
                 }           
              }
                 
         
 
-            // if(idx < SUB_GROUP_DIM){
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM*2  && SUB_GROUP_DIM * 2 >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM];
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM    && SUB_GROUP_DIM >= 2 ) local_data[idx] += local_data[idx + SUB_GROUP_DIM/2];
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/2  && SUB_GROUP_DIM / 2 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/4];
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/4  && SUB_GROUP_DIM / 4 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/8];
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/8  && SUB_GROUP_DIM / 8 >= 2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/16];
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/16 && SUB_GROUP_DIM / 16 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/32];
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/32 && SUB_GROUP_DIM / 32 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/64];
-            //     if (BLOCK_SIZE >= SUB_GROUP_DIM/64 && SUB_GROUP_DIM / 64 >=2) local_data[idx] += local_data[idx + SUB_GROUP_DIM/128];
-            // }
-          
             atomic_ref<T, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(output[0]);
             if (idx == 0) {
                 ao.fetch_add(local_data[0]);
