@@ -121,6 +121,8 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
     std::vector<sycl::platform> gpu_platforms;
     for(auto& p : platforms){
       if(p.has(dev_type))
+        if(p.get_info<sycl::info::platform::name>()==PLATFORM)
+
         gpu_platforms.push_back(p);
     }
         return gpu_platforms;

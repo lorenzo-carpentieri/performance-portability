@@ -1,4 +1,7 @@
 #include <sycl/sycl.hpp>
+#ifndef PLATFORM
+    #error Platform not defined
+#endif
 
 namespace utils{   
     sycl::aspect inline select_dev(std::string type){
@@ -35,4 +38,5 @@ namespace utils{
 
     
 }
+
   

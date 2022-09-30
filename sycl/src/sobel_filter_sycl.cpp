@@ -97,7 +97,8 @@ void filter (sycl::float3* input_image, sycl::float3* output_image, int width, i
     std::vector<sycl::platform> gpu_platforms;
     for(auto& p : platforms){
       if(p.has(dev_type))
-        gpu_platforms.push_back(p);
+        if(p.get_info<sycl::info::platform::name>()==PLATFORM)
+            gpu_platforms.push_back(p);
     }
         return gpu_platforms;
     }();

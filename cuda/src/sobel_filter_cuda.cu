@@ -7,8 +7,8 @@
 
 
 
-#ifndef RADIUS
-    #define RADIUS 3
+#ifndef RADIUS_SOBEL
+    #define RADIUS_SOBEL 3
 #endif
 __device__ float clamp(float x, float a, float b)
 {

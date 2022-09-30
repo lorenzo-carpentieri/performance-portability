@@ -45,19 +45,19 @@ foreach(EXE IN LISTS EXECUTABLES)
 	  add_definitions(-DDEBUG)
   	endif()
 	
+	add_definitions(-DPLATFORM="${PLATFORM}")
 endforeach()
 
 
 # Set compile time variable
 # target_compile_definitions(nbody PRIVATE SIZE_BODY=15104)
 add_compile_definitions(
-	MATRIX_SIZE=4096 
-	SIZE_BODY=81920
-	SIZE_X=16396 SIZE_Y=16396 #matrix_transpose sizes
+	MATRIX_SIZE=2048 
+	SIZE_BODY=20480
+	SIZE_X=8198 SIZE_Y=8192 #matrix_transpose sizes
 	SIZE_REDUCTION=245760
+	RADIUS=3
     RADIUS_SOBEL=3
-	RADIUS=5
-
 						)
 option(SYCL_BACKEND "Enable selected SYCL backend" "")
 option(SYCL_DEVICE "Select target SYCL device" GPU)
