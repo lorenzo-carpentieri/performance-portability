@@ -117,16 +117,17 @@ void filter (unsigned char* input_r,unsigned char* input_g,unsigned char* input_
     auto platforms = sycl::platform::get_platforms();
     
     //Take all cpu or gpu platforms
-    auto gpu_platforms = [&platforms, &dev_type](){
-    std::vector<sycl::platform> gpu_platforms;
-    for(auto& p : platforms){
-      if(p.has(dev_type))
-        if(p.get_info<sycl::info::platform::name>()==PLATFORM)
-
+   auto gpu_platforms = [&platforms, &dev_type](){
+  std::vector<sycl::platform> gpu_platforms;
+  for(auto& p : platforms){
+    std::string platform_name;
+    if(p.has(dev_type))
+      platform_name = p.get_info<sycl::info::platform::name>();
+      if(platform_name.find(PLATFORM)!=-1)
         gpu_platforms.push_back(p);
-    }
-        return gpu_platforms;
-    }();
+  }
+      return gpu_platforms;
+  }();
   
   auto device = gpu_platforms[0].get_devices()[0];
 

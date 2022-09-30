@@ -32,8 +32,10 @@ void simple_vadd(const std::array<T, N>& VA, const std::array<T, N>& VB,
   auto gpu_platforms = [&platforms, &dev_type](){
   std::vector<sycl::platform> gpu_platforms;
   for(auto& p : platforms){
+    std::string platform_name;
     if(p.has(dev_type))
-      if(p.get_info<sycl::info::platform::name>()==PLATFORM)
+      platform_name = p.get_info<sycl::info::platform::name>();
+      if(platform_name.find(PLATFORM)!=-1)
         gpu_platforms.push_back(p);
   }
       return gpu_platforms;

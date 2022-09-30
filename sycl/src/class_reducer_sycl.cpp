@@ -38,14 +38,16 @@ int main(int argc, char* argv[]){
     
     //Take all cpu or gpu platforms
     auto gpu_platforms = [&platforms, &dev_type](){
-    std::vector<sycl::platform> gpu_platforms;
-      for(auto& p : platforms){
-        if(p.has(dev_type))
-            if(p.get_info<sycl::info::platform::name>()==PLATFORM)
-                 gpu_platforms.push_back(p);
-      }
+  std::vector<sycl::platform> gpu_platforms;
+  for(auto& p : platforms){
+    std::string platform_name;
+    if(p.has(dev_type))
+      platform_name = p.get_info<sycl::info::platform::name>();
+      if(platform_name.find(PLATFORM)!=-1)
+        gpu_platforms.push_back(p);
+  }
       return gpu_platforms;
-    }();
+  }();
   
     auto device = gpu_platforms[0].get_devices()[0];
 
@@ -75,7 +77,7 @@ int main(int argc, char* argv[]){
         auto sumValue = sumBuf.get_access<access_mode::read_write>(cgh);
 
         // Create temporary objects describing variables with reduction semantics
-        auto sumReduction = reduction(sumValue,sycl::plus<T>());
+        auto sumReduction = reduction(sumBuf,cgh,sycl::plus<T>());
 
         // parallel_for performs two reduction operations
         // For each reduction variable, the implementation:

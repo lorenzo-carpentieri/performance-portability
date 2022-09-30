@@ -71,82 +71,21 @@ class binary_reduction{
             local_data[idx] = my_sum;
             group_barrier(group);
 
-            for (unsigned int stride = BLOCK_SIZE / 2; stride > SUB_GROUP_DIM; stride >>= 1) {
+            for (unsigned int stride = BLOCK_SIZE / 2; stride >= SUB_GROUP_DIM; stride >>= 1) {
                 if (idx < stride) // Only the first half of the threads do the computation
                     local_data[idx] += local_data[idx + stride];
                 group_barrier(group); // Wait that all threads in the block compute the partial sum
             }
 
-            if(idx < SUB_GROUP_DIM){
-                if(SUB_GROUP_DIM == 1){
-                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
-                }
-                else if(SUB_GROUP_DIM == 16){
-                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
-                } 
-                else if(SUB_GROUP_DIM == 32){
-                    if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
-                } 
-                else if(SUB_GROUP_DIM==64){
-                    if (BLOCK_SIZE >= 128) local_data[idx] += local_data[idx+ 64];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
-                }   
-
-                else{
-                    if (BLOCK_SIZE >= 256) local_data[idx] += local_data[idx+ 128];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 128) local_data[idx] += local_data[idx+ 64];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 64) local_data[idx] += local_data[idx+ 32];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 32) local_data[idx] += local_data[idx+ 16];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 16) local_data[idx] += local_data[idx+ 8];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 8) local_data[idx] += local_data[idx + 4];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 4) local_data[idx] += local_data[idx + 2];
-                    group_barrier(sub_group);
-                    if (BLOCK_SIZE >= 2) local_data[idx] += local_data[idx + 1];
-                }           
-             }
+           if(idx < SUB_GROUP_DIM){
+                 my_sum = reduce_over_group(sub_group, local_data[idx], std::plus<T>());
+            }
                 
         
-
             atomic_ref<T, memory_order::relaxed, memory_scope::device,access::address_space::global_space> ao(output[0]);
             if (idx == 0) {
-                ao.fetch_add(local_data[0]);
+                ao.fetch_add(my_sum);
             }
-
         }       
 };
 
@@ -176,14 +115,16 @@ int main(int argc, char* argv[])
     auto platforms = sycl::platform::get_platforms();
     
     //Take all cpu or gpu platforms
-    auto gpu_platforms = [&platforms, &dev_type](){
-    std::vector<sycl::platform> gpu_platforms;
-    for(auto& p : platforms){
-      if(p.has(dev_type))
-        if(p.get_info<sycl::info::platform::name>()==PLATFORM)
-            gpu_platforms.push_back(p);
-    }
-    return gpu_platforms;
+ auto gpu_platforms = [&platforms, &dev_type](){
+  std::vector<sycl::platform> gpu_platforms;
+  for(auto& p : platforms){
+    std::string platform_name;
+    if(p.has(dev_type))
+      platform_name = p.get_info<sycl::info::platform::name>();
+      if(platform_name.find(PLATFORM)!=-1)
+        gpu_platforms.push_back(p);
+  }
+      return gpu_platforms;
   }();
   
   auto device = gpu_platforms[0].get_devices()[0];

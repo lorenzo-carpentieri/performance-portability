@@ -22,11 +22,11 @@ def compute_mean(times, apps):
             data.append(float(time))
         else:
             data.append(float(time))
-            gm = stat.geometric_mean(data)
+            # gm = stat.geometric_mean(data)
             m = stat.mean(data)
             dev = stat.stdev(data)
             print(""+ apps[app_id])
-            print("geometric mean, "+ str(round(gm, 3)))
+            # print("geometric mean, "+ str(round(gm, 3)))
             print("arithmetic mean, "+ str(round(m, 3)))
             print("standar deviation, "+ str(round(dev,3))+ "\n")
             data=[]
@@ -50,10 +50,10 @@ sycl_apps = ["box_blur", "box_blur_local_memory",
 times_cuda = []
 times_sycl= []           
 
-read_csv("../results/cuda_times.csv", times_cuda)
+# read_csv("../results/cuda_times.csv", times_cuda)
 read_csv("../results/sycl_times.csv", times_sycl)
 
-print("\n"+ "CUDA"+ "\n")
-compute_mean(times_cuda, cuda_apps)
+# print("\n"+ "CUDA"+ "\n")
+# compute_mean(times_cuda, cuda_apps)
 print("\n"+ "SYCL"+ "\n")
 compute_mean(times_sycl, sycl_apps)

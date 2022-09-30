@@ -19,7 +19,7 @@ def run_bench(apps, image_apps, is_cuda, sycl_dev):
             
             os.system(cd_command + exe_command)
         
-        os.system('python -c \'print "\\n"\' >> ../results/'+bench+'_times.csv')
+        os.system('python -c \'print("\\n")\' >> ../results/'+bench+'_times.csv')
 
 # list cuda applications
 cuda_apps = ["box_blur", "box_blur_local_memory", 
@@ -44,8 +44,8 @@ os.system('rm -f ../results/sycl_times.csv')
 if len(sys.argv) != 2:
     print("Specify sycl dev (cpu or gpu) as command line argument")
     exit(-1)
-is_cuda = 1
-run_bench(cuda_apps,image_apps, is_cuda, '')
+# is_cuda = 1
+# run_bench(cuda_apps,image_apps, is_cuda, '')
 
 
 sycl_dev = sys.argv[1]
